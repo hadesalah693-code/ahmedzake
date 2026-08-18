@@ -2,32 +2,40 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f2744">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>الوسام للخدمات الجامعية</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
 <header class="app-header no-print">
-  <div>
-    <h1 id="headerOfficeName">الوسام للخدمات الجامعية</h1>
-    <div class="subtitle">نظام الإيرادات والمصاريف والأرشفة</div>
+  <div class="header-brand">
+    <div class="header-logo">🏆</div>
+    <div class="header-brand-text">
+      <h1 id="headerOfficeName">الوسام للخدمات الجامعية</h1>
+      <div class="subtitle">نظام الإيرادات والمصاريف والأرشفة</div>
+    </div>
   </div>
-  <div style="display:flex;align-items:center;gap:16px">
+  <div class="header-actions">
     <div class="header-date" id="headerDate"></div>
-    <div id="userInfo" style="font-size:.85rem;text-align:left"></div>
-    <button class="btn btn-sm btn-outline" style="color:#fff;border-color:rgba(255,255,255,.4)" onclick="logout()">خروج</button>
+    <div class="header-user">
+      <div class="header-user-avatar" id="userAvatar">م</div>
+      <div class="header-user-info" id="userInfo"></div>
+    </div>
+    <button class="btn btn-sm btn-outline btn-logout" onclick="logout()">خروج</button>
   </div>
 </header>
 
 <div class="app-body no-print">
   <nav class="sidebar">
-    <div class="nav-item active" data-page="dashboard" data-perm="dashboard"><span class="icon">📊</span> لوحة التحكم</div>
-    <div class="nav-item" data-page="new-order" data-perm="orders"><span class="icon">➕</span> طلب جديد</div>
-    <div class="nav-item" data-page="archive" data-perm="archive"><span class="icon">📁</span> الأرشيف</div>
-    <div class="nav-item" data-page="expenses" data-perm="expenses"><span class="icon">💸</span> المصاريف</div>
-    <div class="nav-item" data-page="reports" data-perm="reports"><span class="icon">📈</span> التقارير</div>
-    <div class="nav-item" data-page="settings" data-perm="settings"><span class="icon">⚙️</span> الإعدادات</div>
+    <div class="nav-item active" data-page="dashboard" data-perm="dashboard"><span class="icon">📊</span><span class="nav-label">الرئيسية</span></div>
+    <div class="nav-item" data-page="new-order" data-perm="orders"><span class="icon">➕</span><span class="nav-label">طلب جديد</span></div>
+    <div class="nav-item" data-page="archive" data-perm="archive"><span class="icon">📁</span><span class="nav-label">الأرشيف</span></div>
+    <div class="nav-item" data-page="expenses" data-perm="expenses"><span class="icon">💸</span><span class="nav-label">المصاريف</span></div>
+    <div class="nav-item" data-page="reports" data-perm="reports"><span class="icon">📈</span><span class="nav-label">التقارير</span></div>
+    <div class="nav-item" data-page="settings" data-perm="settings"><span class="icon">⚙️</span><span class="nav-label">الإعدادات</span></div>
   </nav>
 
   <main class="main-content">
@@ -229,7 +237,7 @@
       </div>
       <div class="card">
         <div class="card-header"><h3>📱 الوصول من الموبايل والأجهزة</h3></div>
-        <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:12px">
+        <p class="section-hint">
           شغّل البرنامج على الكمبيوتر، واتصل من الموبايل بنفس شبكة الواي فاي، ثم افتح الرابط:
         </p>
         <div id="networkUrls" class="network-box"></div>
@@ -242,20 +250,20 @@
       </div>
       <div class="card">
         <div class="card-header"><h3>إدارة الخدمات</h3></div>
-        <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:12px">أضف أو احذف أنواع الخدمات التي تقدمها</p>
-        <div style="display:flex;gap:10px;margin-bottom:16px">
-          <input type="text" id="newServiceName" placeholder="اسم الخدمة الجديدة..." style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px">
+        <p class="section-hint">أضف أو احذف أنواع الخدمات التي تقدمها</p>
+        <div class="inline-form-row">
+          <input type="text" id="newServiceName" placeholder="اسم الخدمة الجديدة...">
           <button class="btn btn-success" onclick="addService()">➕ إضافة</button>
         </div>
         <div id="servicesList"></div>
       </div>
       <div class="card" id="usersCard" style="display:none">
         <div class="card-header"><h3>👥 إدارة المستخدمين</h3></div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-          <input type="text" id="newUserName" placeholder="اسم المستخدم" style="flex:1;min-width:120px;padding:10px;border:1px solid var(--border);border-radius:8px">
-          <input type="text" id="newUserFullName" placeholder="الاسم الكامل" style="flex:1;min-width:120px;padding:10px;border:1px solid var(--border);border-radius:8px">
-          <input type="password" id="newUserPassword" placeholder="كلمة المرور" style="flex:1;min-width:120px;padding:10px;border:1px solid var(--border);border-radius:8px">
-          <select id="newUserRole" style="padding:10px;border:1px solid var(--border);border-radius:8px">
+        <div class="inline-form-row">
+          <input type="text" id="newUserName" placeholder="اسم المستخدم">
+          <input type="text" id="newUserFullName" placeholder="الاسم الكامل">
+          <input type="password" id="newUserPassword" placeholder="كلمة المرور">
+          <select id="newUserRole">
             <option value="employee">موظف</option>
             <option value="accountant">محاسب</option>
             <option value="admin">مدير</option>
@@ -321,8 +329,11 @@ function applyRoleUI() {
   if (hasPerm('users')) {
     document.getElementById('usersCard').style.display = 'block';
   }
+  const displayName = currentUser.full_name || currentUser.username;
   document.getElementById('userInfo').innerHTML =
-    `<strong>${currentUser.full_name || currentUser.username}</strong><br><span style="opacity:.8">${ROLE_LABELS[currentUser.role] || currentUser.role}</span>`;
+    `<strong>${displayName}</strong><br><span style="opacity:.8">${ROLE_LABELS[currentUser.role] || currentUser.role}</span>`;
+  const avatar = document.getElementById('userAvatar');
+  if (avatar) avatar.textContent = displayName.charAt(0);
 }
 
 function fmt(n) {
@@ -410,20 +421,24 @@ async function loadDashboard() {
 
   document.getElementById('todayStats').innerHTML = `
     <div class="stat-card revenue">
+      <div class="stat-icon">💰</div>
       <div class="label">إيرادات اليوم</div>
       <div class="value">${fmt(today.revenue.total)}</div>
-      <div class="label">${today.revenue.count} طلب</div>
+      <div class="stat-meta">${today.revenue.count} طلب</div>
     </div>
     <div class="stat-card expense">
+      <div class="stat-icon">📤</div>
       <div class="label">مصاريف اليوم</div>
       <div class="value">${fmt(today.expenses.total)}</div>
-      <div class="label">${today.expenses.count} مصروف</div>
+      <div class="stat-meta">${today.expenses.count} مصروف</div>
     </div>
     <div class="stat-card profit">
+      <div class="stat-icon">📊</div>
       <div class="label">صافي اليوم</div>
       <div class="value ${today.net >= 0 ? 'positive' : 'negative'}">${fmt(today.net)}</div>
     </div>
     <div class="stat-card orders">
+      <div class="stat-icon">📋</div>
       <div class="label">طلبات الشهر</div>
       <div class="value">${month.revenue.count}</div>
     </div>
@@ -617,7 +632,7 @@ function renderOrderFiles(files, orderId) {
 async function viewOrder(id) {
   const o = await api('/api/orders/' + id);
   document.getElementById('orderModalBody').innerHTML = `
-    <div style="line-height:2">
+    <div class="modal-detail">
       <p><strong>رقم الفاتورة:</strong> ${o.invoice_number}</p>
       <p><strong>الزبون:</strong> ${o.customer_name} ${o.customer_phone ? '(' + o.customer_phone + ')' : ''}</p>
       <p><strong>الخدمة:</strong> ${o.service_type}</p>
