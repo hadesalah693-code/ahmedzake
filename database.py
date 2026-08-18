@@ -101,7 +101,7 @@ def init_db():
             ('office_name', 'الوسام للخدمات الجامعية'),
             ('office_phone', ''),
             ('office_address', ''),
-            ('currency', 'د.ع'),
+            ('currency', 'ر.ق'),
             ('last_backup', '');
     """)
     conn.commit()
@@ -109,6 +109,9 @@ def init_db():
     # تحديث الاسم القديم إن وُجد
     conn.execute(
         "UPDATE settings SET value = 'الوسام للخدمات الجامعية' WHERE key = 'office_name' AND value = 'مكتب الوسام'"
+    )
+    conn.execute(
+        "UPDATE settings SET value = 'ر.ق' WHERE key = 'currency' AND value IN ('د.ع', '')"
     )
 
     # إضافة الخدمات الافتراضية

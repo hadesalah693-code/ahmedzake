@@ -869,6 +869,77 @@ tbody tr:hover { background: #f8fafc; }
   font-family: 'Cairo', monospace;
 }
 
+/* ── Report PDF export ── */
+.report-pdf-export {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 794px;
+  padding: 24px;
+  background: #fff;
+  font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+  direction: rtl;
+  color: var(--text);
+}
+
+.report-pdf-header {
+  text-align: center;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+
+.report-pdf-header h2 {
+  color: var(--primary);
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.report-pdf-header p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin: 2px 0;
+}
+
+.report-pdf-export .card {
+  box-shadow: none;
+  border: 1px solid var(--border);
+  page-break-inside: avoid;
+}
+
+.report-pdf-export table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.report-pdf-export thead th {
+  background: var(--primary-soft);
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+}
+
+.report-pdf-export tbody td {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+}
+
+.report-pdf-export .profit-banner {
+  page-break-inside: avoid;
+}
+
+.report-pdf-export .stats-grid {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.report-pdf-export .stat-card {
+  box-shadow: none;
+  border: 1px solid var(--border);
+  padding: 12px;
+}
+
 /* ── Settings helpers ── */
 .inline-form-row {
   display: flex;

@@ -196,12 +196,14 @@
       <div id="dailyReportPanel">
         <div class="filters">
           <input type="date" id="reportDay">
+          <button type="button" class="btn btn-accent" id="downloadDailyPdf" onclick="downloadReportPDF('daily')">📥 تحميل PDF</button>
         </div>
         <div id="dailyReportContent"></div>
       </div>
       <div id="monthlyReportPanel" style="display:none">
         <div class="filters">
           <input type="month" id="reportMonth">
+          <button type="button" class="btn btn-accent" id="downloadMonthlyPdf" onclick="downloadReportPDF('monthly')">📥 تحميل PDF</button>
         </div>
         <div id="reportContent"></div>
       </div>
@@ -227,7 +229,7 @@
             </div>
             <div class="form-group">
               <label>العملة</label>
-              <input type="text" name="currency" placeholder="د.ع">
+              <input type="text" name="currency" placeholder="ر.ق">
             </div>
           </div>
           <div class="form-actions">
@@ -293,7 +295,7 @@
 
 <script>
 const PAYMENT_LABELS = {{ payment_methods | tojson }};
-const CURRENCY = 'د.ع';
+const CURRENCY = 'ر.ق';
 let settings = {};
 let servicesList = [];
 let currentUser = null;
@@ -337,13 +339,13 @@ function applyRoleUI() {
 }
 
 function fmt(n) {
-  return Number(n).toLocaleString('ar-IQ') + ' ' + (settings.currency || CURRENCY);
+  return Number(n).toLocaleString('ar-QA') + ' ' + (settings.currency || CURRENCY);
 }
 
 function fmtDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('ar-QA', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function paymentBadge(method) {
@@ -814,6 +816,74 @@ async function loadDailyReport() {
   `;
 }
 
+async function downloadReportPDF(type) {
+  const isDaily = type === 'daily';
+  const sourceId = isDaily ? 'dailyReportContent' : 'reportContent';
+  const btnId = isDaily ? 'downloadDailyPdf' : 'downloadMonthlyPdf';
+  const source = document.getElementById(sourceId);
+  const btn = document.getElementById(btnId);
+
+  if (!source || !source.innerHTML.trim()) {
+    alert('لا يوجد تقرير للتحميل');
+    return;
+  }
+
+  if (typeof html2pdf === 'undefined') {
+    alert('مكتبة PDF غير محمّلة. تحقق من الاتصال بالإنترنت.');
+    return;
+  }
+
+  const period = isDaily
+    ? document.getElementById('reportDay').value
+    : document.getElementById('reportMonth').value;
+  const title = isDaily ? 'تقرير يومي' : 'تقرير شهري';
+  const office = settings.office_name || 'الوسام للخدمات الجامعية';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'report-pdf-export';
+  wrapper.dir = 'rtl';
+  wrapper.innerHTML = `
+    <div class="report-pdf-header">
+      <h2>${office}</h2>
+      <p>${title} — ${period}</p>
+      <p>تاريخ التصدير: ${new Date().toLocaleString('ar-QA')}</p>
+    </div>
+    ${source.innerHTML}
+  `;
+
+  document.body.appendChild(wrapper);
+
+  const filename = isDaily
+    ? `تقرير-يومي-${period}.pdf`
+    : `تقرير-شهري-${period}.pdf`;
+
+  const originalText = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'جاري التحميل...';
+  }
+
+  try {
+    await html2pdf().set({
+      margin: [12, 12, 12, 12],
+      filename,
+      image: { type: 'jpeg', quality: 0.96 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] },
+    }).from(wrapper).save();
+  } catch (err) {
+    alert('تعذر إنشاء ملف PDF');
+    console.error(err);
+  } finally {
+    document.body.removeChild(wrapper);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+}
+
 async function loadReports() {
   const month = document.getElementById('reportMonth').value || currentMonth();
   document.getElementById('reportMonth').value = month;
@@ -940,7 +1010,7 @@ function debounce(fn, ms) {
   settings = await api('/api/settings');
   document.getElementById('headerOfficeName').textContent = settings.office_name || 'الوسام للخدمات الجامعية';
   document.title = settings.office_name || 'الوسام للخدمات الجامعية';
-  document.getElementById('headerDate').textContent = new Date().toLocaleDateString('ar-IQ', {
+  document.getElementById('headerDate').textContent = new Date().toLocaleDateString('ar-QA', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
 
@@ -957,5 +1027,6 @@ function debounce(fn, ms) {
   loadDashboard();
 })();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </body>
 </html>
