@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الوسام للخدمات الجامعية</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="app-header no-print">
+  <div>
+    <h1 id="headerOfficeName">الوسام للخدمات الجامعية</h1>
+    <div class="subtitle">نظام الإيرادات والمصاريف والأرشفة</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <div class="header-date" id="headerDate"></div>
+    <div id="userInfo" style="font-size:.85rem;text-align:left"></div>
+    <button class="btn btn-sm btn-outline" style="color:#fff;border-color:rgba(255,255,255,.4)" onclick="logout()">خروج</button>
+  </div>
+</header>
+
+<div class="app-body no-print">
+  <nav class="sidebar">
+    <div class="nav-item active" data-page="dashboard" data-perm="dashboard"><span class="icon">📊</span> لوحة التحكم</div>
+    <div class="nav-item" data-page="new-order" data-perm="orders"><span class="icon">➕</span> طلب جديد</div>
+    <div class="nav-item" data-page="archive" data-perm="archive"><span class="icon">📁</span> الأرشيف</div>
+    <div class="nav-item" data-page="expenses" data-perm="expenses"><span class="icon">💸</span> المصاريف</div>
+    <div class="nav-item" data-page="reports" data-perm="reports"><span class="icon">📈</span> التقارير</div>
+    <div class="nav-item" data-page="settings" data-perm="settings"><span class="icon">⚙️</span> الإعدادات</div>
+  </nav>
+
+  <main class="main-content">
+
+    <!-- Dashboard -->
+    <section class="page active" id="page-dashboard">
+      <h2 class="page-title">لوحة التحكم</h2>
+      <div class="stats-grid" id="todayStats"></div>
+      <div class="card">
+        <div class="card-header"><h3>ملخص الشهر الحالي</h3></div>
+        <div id="monthSummary"></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>آخر الطلبات</h3></div>
+        <div class="table-wrap"><table><thead><tr>
+          <th>الفاتورة</th><th>الزبون</th><th>الخدمة</th><th>المبلغ</th><th>الدفع</th><th>التاريخ</th>
+        </tr></thead><tbody id="recentOrders"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- New Order -->
+    <section class="page" id="page-new-order">
+      <h2 class="page-title">تسجيل طلب جديد</h2>
+      <div class="card">
+        <form id="orderForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>اسم الزبون *</label>
+              <input type="text" name="customer_name" required placeholder="اسم الزبون">
+            </div>
+            <div class="form-group">
+              <label>رقم الهاتف</label>
+              <input type="text" name="customer_phone" placeholder="07xx xxx xxxx">
+            </div>
+            <div class="form-group">
+              <label>نوع الخدمة *</label>
+              <select name="service_type" id="orderServiceSelect" required></select>
+            </div>
+            <div class="form-group">
+              <label>المبلغ *</label>
+              <input type="number" name="amount" required min="0" step="500" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>طريقة الدفع *</label>
+              <select name="payment_method" required>
+                {% for key, label in payment_methods.items() %}
+                <option value="{{ key }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group full">
+              <label>وصف الشغل</label>
+              <textarea name="description" placeholder="تفاصيل العمل المطلوب..."></textarea>
+            </div>
+            <div class="form-group full">
+              <label>ملاحظات</label>
+              <textarea name="notes" placeholder="ملاحظات إضافية..."></textarea>
+            </div>
+            <div class="form-group full">
+              <label>📎 ملفات الترجمة / المستندات</label>
+              <div class="file-upload-area" onclick="document.getElementById('orderFiles').click()">
+                <p>اضغط هنا لاختيار الملفات</p>
+                <p style="font-size:.8rem;color:var(--text-muted)">PDF, Word, صور, ZIP — حتى 50 ميجا</p>
+              </div>
+              <input type="file" id="orderFiles" multiple hidden accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.bmp,.txt,.zip,.rar,.xls,.xlsx">
+              <div class="file-list" id="orderFilesList"></div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">💾 حفظ وتسجيل</button>
+            <button type="button" class="btn btn-accent" id="saveAndPrint">🖨️ حفظ وطباعة فاتورة</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Archive -->
+    <section class="page" id="page-archive">
+      <h2 class="page-title">أرشيف الشغل</h2>
+      <div class="filters">
+        <input type="text" id="archiveSearch" placeholder="🔍 بحث بالاسم، الهاتف، أو رقم الفاتورة...">
+        <select id="archiveService">
+          <option value="">كل الخدمات</option>
+        </select>
+        <input type="month" id="archiveMonth">
+      </div>
+      <div class="card">
+        <div class="table-wrap"><table><thead><tr>
+          <th>الفاتورة</th><th>الزبون</th><th>الهاتف</th><th>الخدمة</th><th>الوصف</th><th>المبلغ</th><th>الدفع</th><th>ملفات</th><th>التاريخ</th><th>إجراءات</th>
+        </tr></thead><tbody id="archiveTable"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- Expenses -->
+    <section class="page" id="page-expenses">
+      <h2 class="page-title">المصاريف</h2>
+      <div class="card">
+        <h3 style="margin-bottom:16px">إضافة مصروف</h3>
+        <form id="expenseForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>العنوان *</label>
+              <input type="text" name="title" required placeholder="مثال: إيجار المكتب">
+            </div>
+            <div class="form-group">
+              <label>التصنيف *</label>
+              <select name="category" required>
+                {% for c in expense_categories %}
+                <option value="{{ c }}">{{ c }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>المبلغ *</label>
+              <input type="number" name="amount" required min="0" step="500">
+            </div>
+            <div class="form-group">
+              <label>طريقة الدفع *</label>
+              <select name="payment_method" required>
+                {% for key, label in payment_methods.items() %}
+                <option value="{{ key }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>التاريخ</label>
+              <input type="date" name="expense_date">
+            </div>
+            <div class="form-group full">
+              <label>ملاحظات</label>
+              <input type="text" name="notes" placeholder="ملاحظات...">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-danger">💸 تسجيل المصروف</button>
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3>مصاريف الشهر</h3>
+          <input type="month" id="expenseMonth">
+        </div>
+        <div class="table-wrap"><table><thead><tr>
+          <th>العنوان</th><th>التصنيف</th><th>المبلغ</th><th>الدفع</th><th>التاريخ</th><th>إجراء</th>
+        </tr></thead><tbody id="expenseTable"></tbody></table></div>
+        <div id="expenseTotal" style="text-align:left;margin-top:12px;font-weight:700;font-size:1.1rem"></div>
+      </div>
+    </section>
+
+    <!-- Reports -->
+    <section class="page" id="page-reports">
+      <h2 class="page-title">التقارير</h2>
+      <div class="tabs">
+        <button class="tab-btn active" id="tabDaily" onclick="switchReportTab('daily')">📅 تقرير يومي</button>
+        <button class="tab-btn" id="tabMonthly" onclick="switchReportTab('monthly')">📆 تقرير شهري</button>
+      </div>
+      <div id="dailyReportPanel">
+        <div class="filters">
+          <input type="date" id="reportDay">
+        </div>
+        <div id="dailyReportContent"></div>
+      </div>
+      <div id="monthlyReportPanel" style="display:none">
+        <div class="filters">
+          <input type="month" id="reportMonth">
+        </div>
+        <div id="reportContent"></div>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section class="page" id="page-settings">
+      <h2 class="page-title">إعدادات المكتب</h2>
+      <div class="card">
+        <form id="settingsForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>اسم المكتب</label>
+              <input type="text" name="office_name" placeholder="الوسام للخدمات الجامعية">
+            </div>
+            <div class="form-group">
+              <label>رقم الهاتف</label>
+              <input type="text" name="office_phone" placeholder="07xx xxx xxxx">
+            </div>
+            <div class="form-group full">
+              <label>العنوان</label>
+              <input type="text" name="office_address" placeholder="عنوان المكتب">
+            </div>
+            <div class="form-group">
+              <label>العملة</label>
+              <input type="text" name="currency" placeholder="د.ع">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">💾 حفظ الإعدادات</button>
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>📱 الوصول من الموبايل والأجهزة</h3></div>
+        <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:12px">
+          شغّل البرنامج على الكمبيوتر، واتصل من الموبايل بنفس شبكة الواي فاي، ثم افتح الرابط:
+        </p>
+        <div id="networkUrls" class="network-box"></div>
+        <div class="form-actions" style="margin-top:12px">
+          <button type="button" class="btn btn-accent" onclick="copyNetworkUrl()">📋 نسخ الرابط</button>
+        </div>
+        <p style="color:var(--text-muted);font-size:.82rem;margin-top:12px">
+          إذا لم يعمل من الموبايل: شغّل ملف <strong>open_firewall.bat</strong> كمسؤول (مرة واحدة)
+        </p>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>إدارة الخدمات</h3></div>
+        <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:12px">أضف أو احذف أنواع الخدمات التي تقدمها</p>
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <input type="text" id="newServiceName" placeholder="اسم الخدمة الجديدة..." style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:8px">
+          <button class="btn btn-success" onclick="addService()">➕ إضافة</button>
+        </div>
+        <div id="servicesList"></div>
+      </div>
+      <div class="card" id="usersCard" style="display:none">
+        <div class="card-header"><h3>👥 إدارة المستخدمين</h3></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+          <input type="text" id="newUserName" placeholder="اسم المستخدم" style="flex:1;min-width:120px;padding:10px;border:1px solid var(--border);border-radius:8px">
+          <input type="text" id="newUserFullName" placeholder="الاسم الكامل" style="flex:1;min-width:120px;padding:10px;border:1px solid var(--border);border-radius:8px">
+          <input type="password" id="newUserPassword" placeholder="كلمة المرور" style="flex:1;min-width:120px;padding:10px;border:1px solid var(--border);border-radius:8px">
+          <select id="newUserRole" style="padding:10px;border:1px solid var(--border);border-radius:8px">
+            <option value="employee">موظف</option>
+            <option value="accountant">محاسب</option>
+            <option value="admin">مدير</option>
+          </select>
+          <button class="btn btn-success" onclick="addUser()">➕ إضافة مستخدم</button>
+        </div>
+        <div id="usersList"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Invoice Print Area -->
+<div class="invoice-print" id="invoicePrint"></div>
+
+<!-- Order Detail Modal -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <h3>تفاصيل الطلب</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div id="orderModalBody"></div>
+  </div>
+</div>
+
+<script>
+const PAYMENT_LABELS = {{ payment_methods | tojson }};
+const CURRENCY = 'د.ع';
+let settings = {};
+let servicesList = [];
+let currentUser = null;
+
+const ROLE_LABELS = { admin: 'مدير', employee: 'موظف', accountant: 'محاسب' };
+
+function hasPerm(perm) {
+  return currentUser && (currentUser.permissions || []).includes(perm);
+}
+
+async function api(url, opts = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  if (res.status === 401) {
+    window.location.href = '/login';
+    return;
+  }
+  return res.json();
+}
+
+async function logout() {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  window.location.href = '/login';
+}
+
+function applyRoleUI() {
+  document.querySelectorAll('[data-perm]').forEach(el => {
+    const perm = el.dataset.perm;
+    el.style.display = hasPerm(perm) ? '' : 'none';
+  });
+  if (hasPerm('users')) {
+    document.getElementById('usersCard').style.display = 'block';
+  }
+  document.getElementById('userInfo').innerHTML =
+    `<strong>${currentUser.full_name || currentUser.username}</strong><br><span style="opacity:.8">${ROLE_LABELS[currentUser.role] || currentUser.role}</span>`;
+}
+
+function fmt(n) {
+  return Number(n).toLocaleString('ar-IQ') + ' ' + (settings.currency || CURRENCY);
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('ar-IQ', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function paymentBadge(method) {
+  const labels = { cash: 'كاش', card: 'ماكينة', transfer: 'تحويل بنكي' };
+  const cls = { cash: 'badge-cash', card: 'badge-card', transfer: 'badge-transfer' };
+  return `<span class="badge ${cls[method]}">${labels[method] || method}</span>`;
+}
+
+function currentMonth() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+// ── Navigation ──
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    document.getElementById('page-' + item.dataset.page).classList.add('active');
+    loadPage(item.dataset.page);
+  });
+});
+
+function loadPage(page) {
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'archive') loadArchive();
+  if (page === 'expenses') loadExpenses();
+  if (page === 'reports') { loadDailyReport(); loadReports(); }
+  if (page === 'settings') loadSettings();
+}
+
+// ── Services ──
+async function loadServices() {
+  servicesList = await api('/api/services');
+  const opts = servicesList.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+  const orderSel = document.getElementById('orderServiceSelect');
+  if (orderSel) orderSel.innerHTML = opts;
+  const archiveSel = document.getElementById('archiveService');
+  if (archiveSel) archiveSel.innerHTML = '<option value="">كل الخدمات</option>' + opts;
+}
+
+function renderServicesManager() {
+  const el = document.getElementById('servicesList');
+  if (!el) return;
+  el.innerHTML = servicesList.length ? servicesList.map(s => `
+    <div class="file-item">
+      <span>🔹 ${s.name}</span>
+      <button class="btn btn-sm btn-danger" onclick="deleteService(${s.id})">🗑️ حذف</button>
+    </div>
+  `).join('') : '<p style="color:var(--text-muted)">لا توجد خدمات</p>';
+}
+
+async function addService() {
+  const input = document.getElementById('newServiceName');
+  const name = input.value.trim();
+  if (!name) return alert('اكتب اسم الخدمة');
+  await api('/api/services', { method: 'POST', body: JSON.stringify({ name }) });
+  input.value = '';
+  await loadServices();
+  renderServicesManager();
+}
+
+async function deleteService(id) {
+  if (!confirm('حذف هذه الخدمة؟')) return;
+  await api('/api/services/' + id, { method: 'DELETE' });
+  await loadServices();
+  renderServicesManager();
+}
+
+// ── Dashboard ──
+async function loadDashboard() {
+  const today = await api('/api/reports/today');
+  const month = await api('/api/reports/monthly?month=' + currentMonth());
+
+  document.getElementById('todayStats').innerHTML = `
+    <div class="stat-card revenue">
+      <div class="label">إيرادات اليوم</div>
+      <div class="value">${fmt(today.revenue.total)}</div>
+      <div class="label">${today.revenue.count} طلب</div>
+    </div>
+    <div class="stat-card expense">
+      <div class="label">مصاريف اليوم</div>
+      <div class="value">${fmt(today.expenses.total)}</div>
+      <div class="label">${today.expenses.count} مصروف</div>
+    </div>
+    <div class="stat-card profit">
+      <div class="label">صافي اليوم</div>
+      <div class="value ${today.net >= 0 ? 'positive' : 'negative'}">${fmt(today.net)}</div>
+    </div>
+    <div class="stat-card orders">
+      <div class="label">طلبات الشهر</div>
+      <div class="value">${month.revenue.count}</div>
+    </div>
+  `;
+
+  const profitClass = month.is_profit ? 'profit' : 'loss';
+  const profitText = month.is_profit ? 'ربح' : 'خسارة';
+  document.getElementById('monthSummary').innerHTML = `
+    <div class="profit-banner ${profitClass}">
+      ${profitText} الشهر: ${fmt(Math.abs(month.profit))}
+      &nbsp;|&nbsp; إيرادات: ${fmt(month.revenue.total)} &nbsp;|&nbsp; مصاريف: ${fmt(month.expenses.total)}
+    </div>
+    <div class="stats-grid">
+      ${(month.revenue.by_payment || []).map(p => `
+        <div class="stat-card"><div class="label">${PAYMENT_LABELS[p.payment_method]}</div>
+        <div class="value">${fmt(p.total)}</div><div class="label">${p.count} عملية</div></div>
+      `).join('')}
+    </div>
+  `;
+
+  const recent = hasPerm('archive') ? await api('/api/orders?month=' + currentMonth()) : [];
+  document.getElementById('recentOrders').innerHTML = recent.length ? recent.slice(0, 8).map(o => `
+    <tr>
+      <td>${o.invoice_number}</td><td>${o.customer_name}</td>
+      <td><span class="badge badge-service">${o.service_type}</span></td>
+      <td>${fmt(o.amount)}</td><td>${paymentBadge(o.payment_method)}</td>
+      <td>${fmtDate(o.created_at)}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="6" class="empty-state">لا توجد طلبات بعد</td></tr>';
+}
+
+// ── New Order ──
+let printAfterSave = false;
+let pendingFiles = [];
+
+document.getElementById('orderFiles').addEventListener('change', (e) => {
+  pendingFiles = [...pendingFiles, ...Array.from(e.target.files)];
+  renderPendingFiles();
+  e.target.value = '';
+});
+
+function renderPendingFiles() {
+  const el = document.getElementById('orderFilesList');
+  if (!pendingFiles.length) { el.innerHTML = ''; return; }
+  el.innerHTML = pendingFiles.map((f, i) => `
+    <div class="file-item">
+      <span>📄 ${f.name} (${formatFileSize(f.size)})</span>
+      <button type="button" class="btn btn-sm btn-danger" onclick="removePendingFile(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function removePendingFile(index) {
+  pendingFiles.splice(index, 1);
+  renderPendingFiles();
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' بايت';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' ك.ب';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' م.ب';
+}
+
+function isImage(ext) {
+  return ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'].includes((ext || '').toLowerCase());
+}
+
+async function uploadOrderFiles(orderId, files) {
+  if (!files.length) return;
+  const fd = new FormData();
+  files.forEach(f => fd.append('files', f));
+  await fetch(`/api/orders/${orderId}/files`, { method: 'POST', body: fd });
+}
+
+document.getElementById('orderForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  await saveOrder();
+});
+
+document.getElementById('saveAndPrint').addEventListener('click', async () => {
+  printAfterSave = true;
+  document.getElementById('orderForm').requestSubmit();
+});
+
+async function saveOrder() {
+  const form = document.getElementById('orderForm');
+  const fd = new FormData(form);
+  const data = {
+    customer_name: fd.get('customer_name'),
+    customer_phone: fd.get('customer_phone') || '',
+    payment_method: fd.get('payment_method'),
+    notes: fd.get('notes') || '',
+    items: [{
+      service_type: fd.get('service_type'),
+      description: fd.get('description') || '',
+      amount: parseFloat(fd.get('amount')),
+    }],
+  };
+
+  const order = await api('/api/orders', { method: 'POST', body: JSON.stringify(data) });
+
+  if (pendingFiles.length) {
+    await uploadOrderFiles(order.id, pendingFiles);
+    pendingFiles = [];
+    renderPendingFiles();
+  }
+
+  if (printAfterSave) {
+    const full = await api('/api/orders/' + order.id);
+    printInvoice(full);
+    printAfterSave = false;
+  }
+
+  form.reset();
+  alert('تم تسجيل الطلب بنجاح - فاتورة: ' + order.invoice_number);
+}
+
+// ── Archive ──
+['archiveSearch', 'archiveService', 'archiveMonth'].forEach(id => {
+  document.getElementById(id).addEventListener('input', debounce(loadArchive, 300));
+  document.getElementById(id).addEventListener('change', loadArchive);
+});
+
+async function loadArchive() {
+  const search = document.getElementById('archiveSearch').value;
+  const service = document.getElementById('archiveService').value;
+  const month = document.getElementById('archiveMonth').value;
+  let url = '/api/orders?';
+  if (search) url += 'search=' + encodeURIComponent(search) + '&';
+  if (service) url += 'service=' + encodeURIComponent(service) + '&';
+  if (month) url += 'month=' + month;
+
+  const orders = await api(url);
+  const tbody = document.getElementById('archiveTable');
+
+  if (!orders.length) {
+    tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="icon">📁</div>لا توجد نتائج</div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = orders.map(o => `
+    <tr>
+      <td>${o.invoice_number}</td>
+      <td>${o.customer_name}</td>
+      <td>${o.customer_phone || '-'}</td>
+      <td><span class="badge badge-service">${o.service_type}</span></td>
+      <td>${(o.description || '-').substring(0, 40)}</td>
+      <td>${fmt(o.amount)}</td>
+      <td>${paymentBadge(o.payment_method)}</td>
+      <td>${(o.files && o.files.length) ? `<span class="badge badge-card">📎 ${o.files.length}</span>` : '-'}</td>
+      <td>${fmtDate(o.created_at)}</td>
+      <td>
+        <button class="btn btn-sm btn-outline" onclick="viewOrder(${o.id})" title="عرض وملفات">👁️</button>
+        <button class="btn btn-sm btn-accent" onclick="printOrderById(${o.id})">🖨️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openFile(url) {
+  window.open(url, '_blank');
+}
+
+function renderOrderFiles(files, orderId) {
+  if (!files || !files.length) {
+    return '<p style="color:var(--text-muted)">لا توجد ملفات مرفقة</p>';
+  }
+  return files.map(f => {
+    const url = `/uploads/${orderId}/${f.filename}`;
+    const img = isImage(f.file_type)
+      ? `<img src="${url}" class="file-thumb" alt="${f.original_name}" style="cursor:pointer" onclick="openFile('${url}')">`
+      : `<span style="font-size:2rem">📄</span>`;
+    return `
+      <div class="file-item" style="gap:10px">
+        <div style="display:flex;align-items:center;gap:10px">
+          ${img}
+          <div>
+            <strong>${f.original_name}</strong>
+            <div style="font-size:.78rem;color:var(--text-muted)">${formatFileSize(f.file_size)}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm btn-primary" onclick="openFile('${url}')">📂 فتح</button>
+          <a class="btn btn-sm btn-outline" href="${url}" download="${f.original_name}">⬇️ تحميل</a>
+          <button class="btn btn-sm btn-danger" onclick="deleteOrderFile(${f.id}, ${orderId})">🗑️</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function viewOrder(id) {
+  const o = await api('/api/orders/' + id);
+  document.getElementById('orderModalBody').innerHTML = `
+    <div style="line-height:2">
+      <p><strong>رقم الفاتورة:</strong> ${o.invoice_number}</p>
+      <p><strong>الزبون:</strong> ${o.customer_name} ${o.customer_phone ? '(' + o.customer_phone + ')' : ''}</p>
+      <p><strong>الخدمة:</strong> ${o.service_type}</p>
+      <p><strong>الوصف:</strong> ${o.description || '-'}</p>
+      <p><strong>المبلغ:</strong> ${fmt(o.amount)}</p>
+      <p><strong>الدفع:</strong> ${paymentBadge(o.payment_method)}</p>
+      <p><strong>التاريخ:</strong> ${fmtDate(o.created_at)}</p>
+      <p><strong>ملاحظات:</strong> ${o.notes || '-'}</p>
+    </div>
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+      <h4 style="margin-bottom:10px">📎 ملفات الترجمة / المستندات</h4>
+      <div class="file-list" id="modalFilesList">${renderOrderFiles(o.files, o.id)}</div>
+      <div class="file-upload-area" style="margin-top:12px" onclick="document.getElementById('modalFileInput').click()">
+        <p>➕ إضافة ملفات جديدة</p>
+      </div>
+      <input type="file" id="modalFileInput" multiple hidden accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.bmp,.txt,.zip,.rar,.xls,.xlsx"
+        onchange="uploadModalFiles(${o.id}, this)">
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-accent" onclick="printOrderById(${o.id})">🖨️ طباعة فاتورة</button>
+    </div>
+  `;
+  document.getElementById('orderModal').classList.add('show');
+}
+
+async function uploadModalFiles(orderId, input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  await uploadOrderFiles(orderId, files);
+  input.value = '';
+  viewOrder(orderId);
+}
+
+async function deleteOrderFile(fileId, orderId) {
+  if (!confirm('حذف هذا الملف؟')) return;
+  await fetch('/api/files/' + fileId, { method: 'DELETE' });
+  viewOrder(orderId);
+}
+
+function closeModal() {
+  document.getElementById('orderModal').classList.remove('show');
+}
+
+async function printOrderById(id) {
+  const o = await api('/api/orders/' + id);
+  printInvoice(o);
+}
+
+function printInvoice(order) {
+  const el = document.getElementById('invoicePrint');
+  const items = order.items && order.items.length ? order.items : [{
+    service_type: order.service_type,
+    description: order.description,
+    amount: order.amount,
+  }];
+  const rows = items.map((item, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${item.service_type}</td>
+      <td>${item.description || '-'}</td>
+      <td>${fmt(item.amount)}</td>
+    </tr>
+  `).join('');
+
+  el.innerHTML = `
+    <div class="invoice-box">
+      <div class="invoice-header">
+        <h2>${settings.office_name || 'الوسام للخدمات الجامعية'}</h2>
+        <p>${settings.office_address || ''} ${settings.office_phone ? '| ' + settings.office_phone : ''}</p>
+      </div>
+      <div class="invoice-meta">
+        <div>
+          <p><strong>فاتورة رقم:</strong> ${order.invoice_number}</p>
+          <p><strong>التاريخ:</strong> ${fmtDate(order.created_at)}</p>
+        </div>
+        <div>
+          <p><strong>الزبون:</strong> ${order.customer_name}</p>
+          <p><strong>الهاتف:</strong> ${order.customer_phone || '-'}</p>
+        </div>
+      </div>
+      <table class="invoice-table">
+        <thead><tr><th>#</th><th>الخدمة</th><th>الوصف</th><th>المبلغ</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="invoice-total">الإجمالي: ${fmt(order.amount)}</div>
+      <p style="margin-top:8px"><strong>طريقة الدفع:</strong> ${PAYMENT_LABELS[order.payment_method]}</p>
+      <div class="invoice-footer">شكراً لتعاملكم معنا</div>
+    </div>
+  `;
+  window.print();
+}
+
+// ── Expenses ──
+document.getElementById('expenseForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  data.amount = parseFloat(data.amount);
+  if (!data.expense_date) data.expense_date = new Date().toISOString().split('T')[0];
+  await api('/api/expenses', { method: 'POST', body: JSON.stringify(data) });
+  e.target.reset();
+  loadExpenses();
+  alert('تم تسجيل المصروف');
+});
+
+document.getElementById('expenseMonth').addEventListener('change', loadExpenses);
+
+async function loadExpenses() {
+  const month = document.getElementById('expenseMonth').value || currentMonth();
+  document.getElementById('expenseMonth').value = month;
+  const expenses = await api('/api/expenses?month=' + month);
+  const tbody = document.getElementById('expenseTable');
+  let total = 0;
+
+  tbody.innerHTML = expenses.length ? expenses.map(e => {
+    total += e.amount;
+    return `<tr>
+      <td>${e.title}</td><td>${e.category}</td><td>${fmt(e.amount)}</td>
+      <td>${paymentBadge(e.payment_method)}</td><td>${fmtDate(e.expense_date)}</td>
+      <td><button class="btn btn-sm btn-danger" onclick="deleteExpense(${e.id})">🗑️</button></td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" class="empty-state">لا توجد مصاريف</td></tr>';
+
+  document.getElementById('expenseTotal').textContent = 'إجمالي المصاريف: ' + fmt(total);
+}
+
+async function deleteExpense(id) {
+  if (!confirm('هل تريد حذف هذا المصروف؟')) return;
+  await api('/api/expenses/' + id, { method: 'DELETE' });
+  loadExpenses();
+}
+
+// ── Reports ──
+function switchReportTab(tab) {
+  document.getElementById('tabDaily').classList.toggle('active', tab === 'daily');
+  document.getElementById('tabMonthly').classList.toggle('active', tab === 'monthly');
+  document.getElementById('dailyReportPanel').style.display = tab === 'daily' ? 'block' : 'none';
+  document.getElementById('monthlyReportPanel').style.display = tab === 'monthly' ? 'block' : 'none';
+  if (tab === 'daily') loadDailyReport();
+  else loadReports();
+}
+
+document.getElementById('reportDay').addEventListener('change', loadDailyReport);
+document.getElementById('reportMonth').addEventListener('change', loadReports);
+
+async function loadDailyReport() {
+  const day = document.getElementById('reportDay').value || new Date().toISOString().split('T')[0];
+  document.getElementById('reportDay').value = day;
+  const r = await api('/api/reports/daily?date=' + day);
+  const el = document.getElementById('dailyReportContent');
+  const profitClass = r.is_profit ? 'profit' : 'loss';
+  const profitText = r.is_profit ? '✅ ربح' : '❌ خسارة';
+
+  el.innerHTML = `
+    <div class="profit-banner ${profitClass}">
+      ${profitText} اليوم: ${fmt(Math.abs(r.profit))}
+      &nbsp;|&nbsp; إيرادات: ${fmt(r.revenue.total)} &nbsp;|&nbsp; مصاريف: ${fmt(r.expenses.total)}
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card revenue"><div class="label">إيرادات اليوم</div><div class="value positive">${fmt(r.revenue.total)}</div><div class="label">${r.revenue.count} طلب</div></div>
+      <div class="stat-card expense"><div class="label">مصاريف اليوم</div><div class="value negative">${fmt(r.expenses.total)}</div><div class="label">${r.expenses.count} مصروف</div></div>
+      <div class="stat-card profit"><div class="label">صافي اليوم</div><div class="value ${r.net >= 0 ? 'positive' : 'negative'}">${fmt(r.net)}</div></div>
+    </div>
+    <div class="card"><div class="card-header"><h3>طلبات اليوم</h3></div>
+      <table><thead><tr><th>الفاتورة</th><th>الزبون</th><th>الخدمة</th><th>المبلغ</th><th>الدفع</th></tr></thead><tbody>
+        ${(r.orders || []).map(o => `<tr>
+          <td>${o.invoice_number}</td><td>${o.customer_name}</td>
+          <td><span class="badge badge-service">${o.service_type}</span></td>
+          <td>${fmt(o.amount)}</td><td>${paymentBadge(o.payment_method)}</td>
+        </tr>`).join('') || '<tr><td colspan="5">لا توجد طلبات</td></tr>'}
+      </tbody></table></div>
+    <div class="card"><div class="card-header"><h3>مصاريف اليوم</h3></div>
+      <table><thead><tr><th>العنوان</th><th>التصنيف</th><th>المبلغ</th></tr></thead><tbody>
+        ${(r.expense_list || []).map(e => `<tr><td>${e.title}</td><td>${e.category}</td><td>${fmt(e.amount)}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد مصاريف</td></tr>'}
+      </tbody></table></div>
+    <div class="card"><div class="card-header"><h3>الإيرادات حسب الخدمة</h3></div>
+      <table><thead><tr><th>الخدمة</th><th>عدد</th><th>المبلغ</th></tr></thead><tbody>
+        ${(r.services || []).map(s => `<tr><td>${s.service_type}</td><td>${s.count}</td><td>${fmt(s.total)}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد</td></tr>'}
+      </tbody></table></div>
+  `;
+}
+
+async function loadReports() {
+  const month = document.getElementById('reportMonth').value || currentMonth();
+  document.getElementById('reportMonth').value = month;
+  const r = await api('/api/reports/monthly?month=' + month);
+  const el = document.getElementById('reportContent');
+
+  const profitClass = r.is_profit ? 'profit' : 'loss';
+  const profitText = r.is_profit ? '✅ ربح' : '❌ خسارة';
+
+  el.innerHTML = `
+    <div class="profit-banner ${profitClass}">
+      ${profitText}: ${fmt(Math.abs(r.profit))}
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card revenue"><div class="label">إجمالي الإيرادات</div><div class="value positive">${fmt(r.revenue.total)}</div><div class="label">${r.revenue.count} طلب</div></div>
+      <div class="stat-card expense"><div class="label">إجمالي المصاريف</div><div class="value negative">${fmt(r.expenses.total)}</div><div class="label">${r.expenses.count} مصروف</div></div>
+    </div>
+    <div class="card"><div class="card-header"><h3>الإيرادات حسب طريقة الدفع</h3></div>
+      <table><thead><tr><th>طريقة الدفع</th><th>عدد</th><th>المبلغ</th></tr></thead><tbody>
+        ${(r.revenue.by_payment || []).map(p => `<tr><td>${PAYMENT_LABELS[p.payment_method]}</td><td>${p.count}</td><td>${fmt(p.total)}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد</td></tr>'}
+      </tbody></table></div>
+    <div class="card"><div class="card-header"><h3>الإيرادات حسب نوع الخدمة</h3></div>
+      <table><thead><tr><th>الخدمة</th><th>عدد</th><th>المبلغ</th></tr></thead><tbody>
+        ${(r.services || []).map(s => `<tr><td>${s.service_type}</td><td>${s.count}</td><td>${fmt(s.total)}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد</td></tr>'}
+      </tbody></table></div>
+    <div class="card"><div class="card-header"><h3>المصاريف حسب التصنيف</h3></div>
+      <table><thead><tr><th>التصنيف</th><th>عدد</th><th>المبلغ</th></tr></thead><tbody>
+        ${(r.expenses.by_category || []).map(e => `<tr><td>${e.category}</td><td>${e.count}</td><td>${fmt(e.total)}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد</td></tr>'}
+      </tbody></table></div>
+    <div class="card"><div class="card-header"><h3>الإيرادات اليومية خلال الشهر</h3></div>
+      <table><thead><tr><th>اليوم</th><th>الإيرادات</th></tr></thead><tbody>
+        ${(r.daily_revenue || []).map(d => `<tr><td>${fmtDate(d.day)}</td><td>${fmt(d.revenue)}</td></tr>`).join('') || '<tr><td colspan="2">لا توجد</td></tr>'}
+      </tbody></table></div>
+  `;
+}
+
+// ── Settings ──
+async function loadNetworkInfo() {
+  const net = await api('/api/network');
+  const el = document.getElementById('networkUrls');
+  if (!el) return;
+  window.networkPhoneUrl = net.phone_url;
+  el.innerHTML = `
+    <div class="network-url">${net.phone_url}</div>
+    ${net.ips.length ? `<div style="font-size:.85rem;color:var(--text-muted);margin-top:6px">IP: ${net.ips.join(' | ')}</div>` : ''}
+  `;
+}
+
+function copyNetworkUrl() {
+  const url = window.networkPhoneUrl || 'http://127.0.0.1:5000';
+  navigator.clipboard.writeText(url).then(() => alert('تم نسخ الرابط: ' + url));
+}
+
+async function loadSettings() {
+  settings = await api('/api/settings');
+  const form = document.getElementById('settingsForm');
+  for (const [key, val] of Object.entries(settings)) {
+    const input = form.querySelector(`[name="${key}"]`);
+    if (input) input.value = val;
+  }
+  if (hasPerm('services')) {
+    await loadServices();
+    renderServicesManager();
+  }
+  if (hasPerm('network')) loadNetworkInfo();
+  if (hasPerm('users')) loadUsers();
+}
+
+async function loadUsers() {
+  const users = await api('/api/users');
+  const el = document.getElementById('usersList');
+  el.innerHTML = users.map(u => `
+    <div class="file-item">
+      <span><strong>${u.full_name || u.username}</strong> (@${u.username}) — ${ROLE_LABELS[u.role] || u.role}</span>
+      ${u.id !== currentUser.id ? `<button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">🗑️</button>` : '<span style="font-size:.8rem;color:var(--text-muted)">أنت</span>'}
+    </div>
+  `).join('');
+}
+
+async function addUser() {
+  const data = {
+    username: document.getElementById('newUserName').value.trim(),
+    full_name: document.getElementById('newUserFullName').value.trim(),
+    password: document.getElementById('newUserPassword').value,
+    role: document.getElementById('newUserRole').value,
+  };
+  if (!data.username || !data.password) return alert('أكمل البيانات');
+  await api('/api/users', { method: 'POST', body: JSON.stringify(data) });
+  document.getElementById('newUserName').value = '';
+  document.getElementById('newUserFullName').value = '';
+  document.getElementById('newUserPassword').value = '';
+  loadUsers();
+  alert('تم إضافة المستخدم');
+}
+
+async function deleteUser(id) {
+  if (!confirm('تعطيل هذا المستخدم؟')) return;
+  await api('/api/users/' + id, { method: 'DELETE' });
+  loadUsers();
+}
+
+document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  settings = await api('/api/settings', { method: 'PUT', body: JSON.stringify(data) });
+  document.getElementById('headerOfficeName').textContent = settings.office_name || 'الوسام للخدمات الجامعية';
+  document.title = settings.office_name || 'الوسام للخدمات الجامعية';
+  alert('تم حفظ الإعدادات');
+});
+
+// ── Utils ──
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+// ── Init ──
+(async () => {
+  const me = await fetch('/api/auth/me').then(r => r.json());
+  if (!me.authenticated) { window.location.href = '/login'; return; }
+  currentUser = me.user;
+  applyRoleUI();
+
+  settings = await api('/api/settings');
+  document.getElementById('headerOfficeName').textContent = settings.office_name || 'الوسام للخدمات الجامعية';
+  document.title = settings.office_name || 'الوسام للخدمات الجامعية';
+  document.getElementById('headerDate').textContent = new Date().toLocaleDateString('ar-IQ', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  const month = currentMonth();
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('archiveMonth').value = month;
+  document.getElementById('expenseMonth').value = month;
+  document.getElementById('reportMonth').value = month;
+  document.getElementById('reportDay').value = today;
+  document.querySelector('[name="expense_date"]').value = today;
+
+  await loadServices();
+  loadNetworkInfo();
+  loadDashboard();
+})();
+</script>
+</body>
+</html>
