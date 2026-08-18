@@ -35,20 +35,15 @@ if %errorlevel% neq 0 (
 
 echo.
 echo === الخطوة 2: رفع المشروع على GitHub ===
-"%GH%" repo view hadesalah693-code/alwisam >nul 2>&1
-if %errorlevel% neq 0 (
-    "%GH%" repo create alwisam --public --source=. --remote=origin --push
-) else (
-    git remote remove origin 2>nul
-    git remote add origin https://github.com/hadesalah693-code/alwisam.git
-    git push -u origin main
-)
+git remote remove origin 2>nul
+git remote add origin https://github.com/hadesalah693-code/ahmedzake.git
+git push -u origin main
 
 echo.
 echo === الخطوة 3: النشر على Render ===
 echo افتح Render وسجّل دخول GitHub ثم:
 echo 1) New ^> Blueprint
-echo 2) اختر مستودع alwisam
+echo 2) اختر مستودع ahmedzake
 echo 3) عيّن ADMIN_PASSWORD
 echo 4) Deploy
 echo.

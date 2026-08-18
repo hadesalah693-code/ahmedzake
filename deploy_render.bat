@@ -10,19 +10,19 @@ echo الخطوات:
 echo.
 echo 1) ارفع المشروع على GitHub:
 echo    - افتح https://github.com/new
-echo    - اسم المستودع: alwisam
+echo    - اسم المستودع: ahmedzake
 echo    - اختر Private او Public
 echo    - لا تضف README
 echo    - اضغط Create repository
 echo.
 echo 2) في Terminal داخل مجلد المشروع نفّذ:
-echo    git remote add origin https://github.com/USERNAME/alwisam.git
+echo    git remote add origin https://github.com/hadesalah693-code/ahmedzake.git
 echo    git push -u origin main
 echo.
 echo 3) افتح Render واربط المستودع:
 echo    https://dashboard.render.com/blueprints
 echo    - New Blueprint Instance
-echo    - اختر المستودع alwisam
+echo    - اختر المستودع ahmedzake
 echo    - عيّن ADMIN_PASSWORD بكلمة مرور قوية
 echo    - Deploy
 echo.
