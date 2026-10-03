@@ -8,7 +8,7 @@ from flask_login import login_required, login_user, logout_user, current_user
 from config import SECRET_KEY, PORT, ADMIN_USERNAME
 from database import (
     get_db, init_db, generate_invoice_number, enrich_order,
-    get_active_services, UPLOADS_DIR, ALLOWED_EXTENSIONS,
+    get_active_services, get_setting, UPLOADS_DIR, ALLOWED_EXTENSIONS, CURRENCY,
 )
 from backup import create_backup, auto_backup_if_needed, list_backups
 from network import get_local_ips, get_access_urls
@@ -199,12 +199,14 @@ def change_user_password(user_id):
 def index():
     conn = get_db()
     service_types = [s["name"] for s in get_active_services(conn)]
+    currency = get_setting(conn, "currency", CURRENCY) or CURRENCY
     conn.close()
     return render_template(
         "index.html",
         service_types=service_types,
         expense_categories=EXPENSE_CATEGORIES,
         payment_methods=PAYMENT_METHODS,
+        currency=currency,
     )
 
 
@@ -224,12 +226,17 @@ def get_settings():
 @permission_required("settings")
 def update_settings():
     data = request.json
+    data.pop("currency", None)
     conn = get_db()
     for key, value in data.items():
         conn.execute(
             "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (key, value),
         )
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES ('currency', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (CURRENCY,),
+    )
     conn.commit()
     rows = conn.execute("SELECT key, value FROM settings").fetchall()
     conn.close()
@@ -299,6 +306,7 @@ def list_orders():
     month = request.args.get("month")
     search = request.args.get("search", "").strip()
     service = request.args.get("service", "")
+    status = request.args.get("status", "").strip()
 
     query = "SELECT DISTINCT o.* FROM orders o"
     params = []
@@ -309,6 +317,10 @@ def list_orders():
         query += " " + " ".join(joins)
 
     query += " WHERE o.status != 'cancelled'"
+
+    if status:
+        query += " AND o.status = ?"
+        params.append(status)
 
     if month:
         query += " AND strftime('%Y-%m', o.created_at) = ?"
@@ -423,6 +435,61 @@ def update_order(order_id):
     conn.commit()
     row = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
     order = enrich_order(conn, row)
+    conn.close()
+    return jsonify(order)
+
+
+@app.route("/api/orders/pending/summary", methods=["GET"])
+@login_required
+@permission_required("pending")
+def pending_summary():
+    conn = get_db()
+    row = conn.execute(
+        "SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM orders WHERE status='pending'"
+    ).fetchone()
+    conn.close()
+    return jsonify({"total": row["total"], "count": row["count"]})
+
+
+@app.route("/api/orders/pending", methods=["GET"])
+@login_required
+@permission_required("pending")
+def list_pending_orders():
+    search = request.args.get("search", "").strip()
+    query = "SELECT * FROM orders WHERE status='pending'"
+    params = []
+    if search:
+        query += " AND (customer_name LIKE ? OR customer_phone LIKE ? OR invoice_number LIKE ?)"
+        like = f"%{search}%"
+        params.extend([like, like, like])
+    query += " ORDER BY created_at DESC"
+    conn = get_db()
+    rows = conn.execute(query, params).fetchall()
+    orders = [enrich_order(conn, r) for r in rows]
+    conn.close()
+    return jsonify(orders)
+
+
+@app.route("/api/orders/<int:order_id>/collect", methods=["POST"])
+@login_required
+@permission_required("orders")
+def collect_order(order_id):
+    conn = get_db()
+    row = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({"error": "غير موجود"}), 404
+    if row["status"] != "pending":
+        conn.close()
+        return jsonify({"error": "الطلب محصّل مسبقاً"}), 400
+
+    now = datetime.now().isoformat()
+    conn.execute(
+        "UPDATE orders SET status='completed', updated_at=? WHERE id=?",
+        (now, order_id),
+    )
+    conn.commit()
+    order = enrich_order(conn, conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone())
     conn.close()
     return jsonify(order)
 

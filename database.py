@@ -4,6 +4,8 @@ from datetime import datetime
 from config import DATA_DIR, ADMIN_USERNAME, ADMIN_PASSWORD
 from auth import hash_password
 
+CURRENCY = "ر.ق"
+
 BASE_DIR = os.path.dirname(__file__)
 DB_PATH = os.path.join(DATA_DIR, "wisam.db")
 UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
@@ -110,8 +112,11 @@ def init_db():
     conn.execute(
         "UPDATE settings SET value = 'الوسام للخدمات الجامعية' WHERE key = 'office_name' AND value = 'مكتب الوسام'"
     )
+
+    # العملة ثابتة: الريال القطري — أي عملة أخرى تُحوَّل إلى ر.ق
     conn.execute(
-        "UPDATE settings SET value = 'ر.ق' WHERE key = 'currency' AND value IN ('د.ع', '')"
+        "INSERT INTO settings (key, value) VALUES ('currency', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (CURRENCY,),
     )
 
     # إضافة الخدمات الافتراضية
@@ -195,6 +200,11 @@ def get_active_services(conn):
         "SELECT id, name FROM services WHERE is_active = 1 ORDER BY sort_order, id"
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+def get_setting(conn, key, default=""):
+    row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row and row["value"] is not None else default
 
 
 def enrich_order(conn, row):

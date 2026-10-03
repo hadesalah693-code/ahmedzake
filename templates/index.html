@@ -33,6 +33,7 @@
     <div class="nav-item active" data-page="dashboard" data-perm="dashboard"><span class="icon">📊</span><span class="nav-label">الرئيسية</span></div>
     <div class="nav-item" data-page="new-order" data-perm="orders"><span class="icon">➕</span><span class="nav-label">طلب جديد</span></div>
     <div class="nav-item" data-page="archive" data-perm="archive"><span class="icon">📁</span><span class="nav-label">الأرشيف</span></div>
+    <div class="nav-item" data-page="pending" data-perm="pending"><span class="icon">⏳</span><span class="nav-label">لم تحصل</span></div>
     <div class="nav-item" data-page="expenses" data-perm="expenses"><span class="icon">💸</span><span class="nav-label">المصاريف</span></div>
     <div class="nav-item" data-page="reports" data-perm="reports"><span class="icon">📈</span><span class="nav-label">التقارير</span></div>
     <div class="nav-item" data-page="settings" data-perm="settings"><span class="icon">⚙️</span><span class="nav-label">الإعدادات</span></div>
@@ -61,49 +62,80 @@
       <h2 class="page-title">تسجيل طلب جديد</h2>
       <div class="card">
         <form id="orderForm">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>اسم الزبون *</label>
-              <input type="text" name="customer_name" required placeholder="اسم الزبون">
-            </div>
-            <div class="form-group">
-              <label>رقم الهاتف</label>
-              <input type="text" name="customer_phone" placeholder="07xx xxx xxxx">
-            </div>
-            <div class="form-group">
-              <label>نوع الخدمة *</label>
-              <select name="service_type" id="orderServiceSelect" required></select>
-            </div>
-            <div class="form-group">
-              <label>المبلغ *</label>
-              <input type="number" name="amount" required min="0" step="500" placeholder="0">
-            </div>
-            <div class="form-group">
-              <label>طريقة الدفع *</label>
-              <select name="payment_method" required>
-                {% for key, label in payment_methods.items() %}
-                <option value="{{ key }}">{{ label }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="form-group full">
-              <label>وصف الشغل</label>
-              <textarea name="description" placeholder="تفاصيل العمل المطلوب..."></textarea>
-            </div>
-            <div class="form-group full">
-              <label>ملاحظات</label>
-              <textarea name="notes" placeholder="ملاحظات إضافية..."></textarea>
-            </div>
-            <div class="form-group full">
-              <label>📎 ملفات الترجمة / المستندات</label>
-              <div class="file-upload-area" onclick="document.getElementById('orderFiles').click()">
-                <p>اضغط هنا لاختيار الملفات</p>
-                <p style="font-size:.8rem;color:var(--text-muted)">PDF, Word, صور, ZIP — حتى 50 ميجا</p>
+          <div class="form-section">
+            <div class="form-section-title">👤 بيانات الزبون</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>اسم الزبون *</label>
+                <input type="text" name="customer_name" required placeholder="اسم الزبون" autocomplete="off">
               </div>
-              <input type="file" id="orderFiles" multiple hidden accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.bmp,.txt,.zip,.rar,.xls,.xlsx">
-              <div class="file-list" id="orderFilesList"></div>
+              <div class="form-group">
+                <label>رقم الهاتف</label>
+                <input type="tel" name="customer_phone" placeholder="3xxx xxxx" inputmode="tel" autocomplete="off">
+              </div>
             </div>
           </div>
+
+          <div class="form-section">
+            <div class="form-section-title">🧾 تفاصيل الشغل</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>نوع الخدمة *</label>
+                <select name="service_type" id="orderServiceSelect" required></select>
+              </div>
+              <div class="form-group">
+                <label>طريقة الدفع *</label>
+                <select name="payment_method" required>
+                  {% for key, label in payment_methods.items() %}
+                  <option value="{{ key }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group full">
+                <label>وصف الشغل</label>
+                <textarea name="description" placeholder="تفاصيل العمل المطلوب..." rows="2"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-title">💰 المبلغ والتحصيل</div>
+            <div class="form-grid">
+              <div class="form-group amount-field">
+                <label>المبلغ ({{ currency }}) *</label>
+                <input type="number" name="amount" required min="0" step="any" inputmode="decimal" placeholder="0" autocomplete="off">
+                <p class="field-hint">اكتب المبلغ يدوياً بالريال القطري — أي رقم مقبول</p>
+              </div>
+              <div class="form-group">
+                <label>الحالة</label>
+                <label class="checkbox-label">
+                  <input type="checkbox" id="orderNotCollected">
+                  <span>⏳ مبلغ لم يُحصّل بعد (آجل)</span>
+                </label>
+                <p class="field-hint">سيُسجّل الطلب ويظهر في «مبالغ لم تحصل» حتى يتم التحصيل</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-title">📎 ملفات وملاحظات</div>
+            <div class="form-grid">
+              <div class="form-group full">
+                <label>ملفات الترجمة / المستندات</label>
+                <div class="file-upload-area" onclick="document.getElementById('orderFiles').click()">
+                  <p>اضغط هنا لاختيار الملفات</p>
+                  <p style="font-size:.8rem;color:var(--text-muted)">PDF, Word, صور, ZIP — حتى 50 ميجا</p>
+                </div>
+                <input type="file" id="orderFiles" multiple hidden accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.bmp,.txt,.zip,.rar,.xls,.xlsx">
+                <div class="file-list" id="orderFilesList"></div>
+              </div>
+              <div class="form-group full">
+                <label>ملاحظات</label>
+                <textarea name="notes" placeholder="ملاحظات إضافية..." rows="2"></textarea>
+              </div>
+            </div>
+          </div>
+
           <div class="form-actions">
             <button type="submit" class="btn btn-primary">💾 حفظ وتسجيل</button>
             <button type="button" class="btn btn-accent" id="saveAndPrint">🖨️ حفظ وطباعة فاتورة</button>
@@ -123,9 +155,25 @@
         <input type="month" id="archiveMonth">
       </div>
       <div class="card">
-        <div class="table-wrap"><table><thead><tr>
-          <th>الفاتورة</th><th>الزبون</th><th>الهاتف</th><th>الخدمة</th><th>الوصف</th><th>المبلغ</th><th>الدفع</th><th>ملفات</th><th>التاريخ</th><th>إجراءات</th>
+        <div class="table-wrap table-scroll"><table><thead><tr>
+          <th>الفاتورة</th><th>الزبون</th><th>الهاتف</th><th>الخدمة</th><th>الوصف</th><th>المبلغ</th><th>الدفع</th><th>الحالة</th><th>ملفات</th><th>التاريخ</th><th>إجراءات</th>
         </tr></thead><tbody id="archiveTable"></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- Pending (Uncollected) -->
+    <section class="page" id="page-pending">
+      <h2 class="page-title">مبالغ لم تحصل</h2>
+      <div class="stats-grid" id="pendingStats"></div>
+      <div class="card">
+        <div class="card-header">
+          <h3>الطلبات الآجلة</h3>
+          <input type="text" id="pendingSearch" placeholder="🔍 بحث...">
+        </div>
+        <div class="table-wrap table-scroll"><table><thead><tr>
+          <th>الفاتورة</th><th>الزبون</th><th>الهاتف</th><th>الخدمة</th><th>المبلغ</th><th>التاريخ</th><th>إجراءات</th>
+        </tr></thead><tbody id="pendingTable"></tbody></table></div>
+        <div id="pendingTotal" class="total-bar"></div>
       </div>
     </section>
 
@@ -149,8 +197,8 @@
               </select>
             </div>
             <div class="form-group">
-              <label>المبلغ *</label>
-              <input type="number" name="amount" required min="0" step="500">
+              <label>المبلغ ({{ currency }}) *</label>
+              <input type="number" name="amount" required min="0" step="any" inputmode="decimal" placeholder="اكتب المبلغ">
             </div>
             <div class="form-group">
               <label>طريقة الدفع *</label>
@@ -229,7 +277,8 @@
             </div>
             <div class="form-group">
               <label>العملة</label>
-              <input type="text" name="currency" placeholder="ر.ق">
+              <input type="text" value="{{ currency }}" readonly>
+              <p class="field-hint">العملة ثابتة: الريال القطري (ر.ق)</p>
             </div>
           </div>
           <div class="form-actions">
@@ -342,6 +391,17 @@ function fmt(n) {
   return Number(n).toLocaleString('ar-QA') + ' ' + (settings.currency || CURRENCY);
 }
 
+const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+function parseAmount(value) {
+  const raw = String(value ?? '').trim()
+    .replace(/[٠-٩]/g, d => ARABIC_DIGITS.indexOf(d))
+    .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/٫/g, '.')
+    .replace(/[,\s٬]/g, '');
+  const n = parseFloat(raw);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
 function fmtDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -352,6 +412,12 @@ function paymentBadge(method) {
   const labels = { cash: 'كاش', card: 'ماكينة', transfer: 'تحويل بنكي' };
   const cls = { cash: 'badge-cash', card: 'badge-card', transfer: 'badge-transfer' };
   return `<span class="badge ${cls[method]}">${labels[method] || method}</span>`;
+}
+
+function statusBadge(status) {
+  if (status === 'pending') return '<span class="badge badge-pending">⏳ لم يُحصّل</span>';
+  if (status === 'completed') return '<span class="badge badge-paid">✅ محصّل</span>';
+  return `<span class="badge">${status}</span>`;
 }
 
 function currentMonth() {
@@ -373,6 +439,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
 function loadPage(page) {
   if (page === 'dashboard') loadDashboard();
   if (page === 'archive') loadArchive();
+  if (page === 'pending') loadPending();
   if (page === 'expenses') loadExpenses();
   if (page === 'reports') { loadDailyReport(); loadReports(); }
   if (page === 'settings') loadSettings();
@@ -420,6 +487,7 @@ async function deleteService(id) {
 async function loadDashboard() {
   const today = await api('/api/reports/today');
   const month = await api('/api/reports/monthly?month=' + currentMonth());
+  const pending = hasPerm('pending') ? await api('/api/orders/pending/summary') : { total: 0, count: 0 };
 
   document.getElementById('todayStats').innerHTML = `
     <div class="stat-card revenue">
@@ -438,6 +506,12 @@ async function loadDashboard() {
       <div class="stat-icon">📊</div>
       <div class="label">صافي اليوم</div>
       <div class="value ${today.net >= 0 ? 'positive' : 'negative'}">${fmt(today.net)}</div>
+    </div>
+    <div class="stat-card pending-collect">
+      <div class="stat-icon">⏳</div>
+      <div class="label">لم تُحصّل بعد</div>
+      <div class="value">${fmt(pending.total)}</div>
+      <div class="stat-meta">${pending.count} طلب آجل</div>
     </div>
     <div class="stat-card orders">
       <div class="stat-icon">📋</div>
@@ -464,10 +538,12 @@ async function loadDashboard() {
   const recent = hasPerm('archive') ? await api('/api/orders?month=' + currentMonth()) : [];
   document.getElementById('recentOrders').innerHTML = recent.length ? recent.slice(0, 8).map(o => `
     <tr>
-      <td>${o.invoice_number}</td><td>${o.customer_name}</td>
-      <td><span class="badge badge-service">${o.service_type}</span></td>
-      <td>${fmt(o.amount)}</td><td>${paymentBadge(o.payment_method)}</td>
-      <td>${fmtDate(o.created_at)}</td>
+      <td data-label="الفاتورة" class="cell-strong num">${o.invoice_number}</td>
+      <td data-label="الزبون">${o.customer_name}</td>
+      <td data-label="الخدمة"><span class="badge badge-service">${o.service_type}</span></td>
+      <td data-label="المبلغ" class="amount">${fmt(o.amount)}</td>
+      <td data-label="الدفع">${statusBadge(o.status)} ${paymentBadge(o.payment_method)}</td>
+      <td data-label="التاريخ" class="num muted">${fmtDate(o.created_at)}</td>
     </tr>
   `).join('') : '<tr><td colspan="6" class="empty-state">لا توجد طلبات بعد</td></tr>';
 }
@@ -533,10 +609,11 @@ async function saveOrder() {
     customer_phone: fd.get('customer_phone') || '',
     payment_method: fd.get('payment_method'),
     notes: fd.get('notes') || '',
+    status: document.getElementById('orderNotCollected').checked ? 'pending' : 'completed',
     items: [{
       service_type: fd.get('service_type'),
       description: fd.get('description') || '',
-      amount: parseFloat(fd.get('amount')),
+      amount: parseAmount(fd.get('amount')),
     }],
   };
 
@@ -555,7 +632,11 @@ async function saveOrder() {
   }
 
   form.reset();
-  alert('تم تسجيل الطلب بنجاح - فاتورة: ' + order.invoice_number);
+  document.getElementById('orderNotCollected').checked = false;
+  const msg = order.status === 'pending'
+    ? 'تم تسجيل الطلب (آجل - لم يُحصّل) - فاتورة: ' + order.invoice_number
+    : 'تم تسجيل الطلب بنجاح - فاتورة: ' + order.invoice_number;
+  alert(msg);
 }
 
 // ── Archive ──
@@ -577,27 +658,80 @@ async function loadArchive() {
   const tbody = document.getElementById('archiveTable');
 
   if (!orders.length) {
-    tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="icon">📁</div>لا توجد نتائج</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11"><div class="empty-state"><div class="icon">📁</div>لا توجد نتائج</div></td></tr>';
     return;
   }
 
   tbody.innerHTML = orders.map(o => `
     <tr>
-      <td>${o.invoice_number}</td>
-      <td>${o.customer_name}</td>
-      <td>${o.customer_phone || '-'}</td>
-      <td><span class="badge badge-service">${o.service_type}</span></td>
-      <td>${(o.description || '-').substring(0, 40)}</td>
-      <td>${fmt(o.amount)}</td>
-      <td>${paymentBadge(o.payment_method)}</td>
-      <td>${(o.files && o.files.length) ? `<span class="badge badge-card">📎 ${o.files.length}</span>` : '-'}</td>
-      <td>${fmtDate(o.created_at)}</td>
-      <td>
-        <button class="btn btn-sm btn-outline" onclick="viewOrder(${o.id})" title="عرض وملفات">👁️</button>
-        <button class="btn btn-sm btn-accent" onclick="printOrderById(${o.id})">🖨️</button>
+      <td data-label="الفاتورة" class="cell-strong num">${o.invoice_number}</td>
+      <td data-label="الزبون">${o.customer_name}</td>
+      <td data-label="الهاتف" class="num muted">${o.customer_phone || '-'}</td>
+      <td data-label="الخدمة"><span class="badge badge-service">${o.service_type}</span></td>
+      <td data-label="الوصف" class="muted">${(o.description || '-').substring(0, 40)}</td>
+      <td data-label="المبلغ" class="amount">${fmt(o.amount)}</td>
+      <td data-label="الدفع">${paymentBadge(o.payment_method)}</td>
+      <td data-label="الحالة">${statusBadge(o.status)}</td>
+      <td data-label="الملفات">${(o.files && o.files.length) ? `<span class="badge badge-card">📎 ${o.files.length}</span>` : '-'}</td>
+      <td data-label="التاريخ" class="num muted">${fmtDate(o.created_at)}</td>
+      <td class="actions full-row">
+        <button class="btn btn-sm btn-outline" onclick="viewOrder(${o.id})" title="عرض وملفات">👁️ عرض</button>
+        <button class="btn btn-sm btn-accent" onclick="printOrderById(${o.id})">🖨️ طباعة</button>
       </td>
     </tr>
   `).join('');
+}
+
+// ── Pending (Uncollected) ──
+document.getElementById('pendingSearch').addEventListener('input', debounce(loadPending, 300));
+
+async function loadPending() {
+  const search = document.getElementById('pendingSearch').value.trim();
+  let url = '/api/orders/pending';
+  if (search) url += '?search=' + encodeURIComponent(search);
+
+  const orders = await api(url);
+  const summary = await api('/api/orders/pending/summary');
+  const tbody = document.getElementById('pendingTable');
+
+  document.getElementById('pendingStats').innerHTML = `
+    <div class="stat-card pending-collect">
+      <div class="stat-icon">⏳</div>
+      <div class="label">إجمالي المبالغ الآجلة</div>
+      <div class="value">${fmt(summary.total)}</div>
+      <div class="stat-meta">${summary.count} طلب</div>
+    </div>
+  `;
+  document.getElementById('pendingTotal').textContent =
+    'إجمالي لم يُحصّل: ' + fmt(summary.total) + ' (' + summary.count + ' طلب)';
+
+  if (!orders.length) {
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="icon">✅</div>لا توجد مبالغ معلّقة</div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = orders.map(o => `
+    <tr>
+      <td data-label="الفاتورة" class="cell-strong num">${o.invoice_number}</td>
+      <td data-label="الزبون">${o.customer_name}</td>
+      <td data-label="الهاتف" class="num muted">${o.customer_phone || '-'}</td>
+      <td data-label="الخدمة"><span class="badge badge-service">${o.service_type}</span></td>
+      <td data-label="المبلغ" class="amount">${fmt(o.amount)}</td>
+      <td data-label="التاريخ" class="num muted">${fmtDate(o.created_at)}</td>
+      <td class="actions full-row">
+        <button class="btn btn-sm btn-success" onclick="collectOrder(${o.id})">✅ تم التحصيل</button>
+        <button class="btn btn-sm btn-outline" onclick="viewOrder(${o.id})">👁️ عرض</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function collectOrder(id) {
+  if (!confirm('تأكيد تحصيل المبلغ؟ سيُضاف للإيرادات.')) return;
+  await api('/api/orders/' + id + '/collect', { method: 'POST' });
+  loadPending();
+  if (document.getElementById('page-dashboard').classList.contains('active')) loadDashboard();
+  alert('تم تحصيل المبلغ بنجاح');
 }
 
 function openFile(url) {
@@ -640,6 +774,7 @@ async function viewOrder(id) {
       <p><strong>الخدمة:</strong> ${o.service_type}</p>
       <p><strong>الوصف:</strong> ${o.description || '-'}</p>
       <p><strong>المبلغ:</strong> ${fmt(o.amount)}</p>
+      <p><strong>الحالة:</strong> ${statusBadge(o.status)}</p>
       <p><strong>الدفع:</strong> ${paymentBadge(o.payment_method)}</p>
       <p><strong>التاريخ:</strong> ${fmtDate(o.created_at)}</p>
       <p><strong>ملاحظات:</strong> ${o.notes || '-'}</p>
@@ -654,6 +789,7 @@ async function viewOrder(id) {
         onchange="uploadModalFiles(${o.id}, this)">
     </div>
     <div class="form-actions">
+      ${o.status === 'pending' && hasPerm('orders') ? `<button class="btn btn-success" onclick="collectOrder(${o.id}); closeModal();">✅ تم التحصيل</button>` : ''}
       <button class="btn btn-accent" onclick="printOrderById(${o.id})">🖨️ طباعة فاتورة</button>
     </div>
   `;
@@ -731,7 +867,7 @@ function printInvoice(order) {
 document.getElementById('expenseForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(e.target));
-  data.amount = parseFloat(data.amount);
+  data.amount = parseAmount(data.amount);
   if (!data.expense_date) data.expense_date = new Date().toISOString().split('T')[0];
   await api('/api/expenses', { method: 'POST', body: JSON.stringify(data) });
   e.target.reset();
@@ -751,9 +887,12 @@ async function loadExpenses() {
   tbody.innerHTML = expenses.length ? expenses.map(e => {
     total += e.amount;
     return `<tr>
-      <td>${e.title}</td><td>${e.category}</td><td>${fmt(e.amount)}</td>
-      <td>${paymentBadge(e.payment_method)}</td><td>${fmtDate(e.expense_date)}</td>
-      <td><button class="btn btn-sm btn-danger" onclick="deleteExpense(${e.id})">🗑️</button></td>
+      <td data-label="العنوان">${e.title}</td>
+      <td data-label="التصنيف"><span class="badge badge-service">${e.category}</span></td>
+      <td data-label="المبلغ" class="amount">${fmt(e.amount)}</td>
+      <td data-label="الدفع">${paymentBadge(e.payment_method)}</td>
+      <td data-label="التاريخ" class="num muted">${fmtDate(e.expense_date)}</td>
+      <td class="actions"><button class="btn btn-sm btn-danger" onclick="deleteExpense(${e.id})">🗑️</button></td>
     </tr>`;
   }).join('') : '<tr><td colspan="6" class="empty-state">لا توجد مصاريف</td></tr>';
 
@@ -793,27 +932,65 @@ async function loadDailyReport() {
       &nbsp;|&nbsp; إيرادات: ${fmt(r.revenue.total)} &nbsp;|&nbsp; مصاريف: ${fmt(r.expenses.total)}
     </div>
     <div class="stats-grid">
-      <div class="stat-card revenue"><div class="label">إيرادات اليوم</div><div class="value positive">${fmt(r.revenue.total)}</div><div class="label">${r.revenue.count} طلب</div></div>
-      <div class="stat-card expense"><div class="label">مصاريف اليوم</div><div class="value negative">${fmt(r.expenses.total)}</div><div class="label">${r.expenses.count} مصروف</div></div>
-      <div class="stat-card profit"><div class="label">صافي اليوم</div><div class="value ${r.net >= 0 ? 'positive' : 'negative'}">${fmt(r.net)}</div></div>
+      <div class="stat-card revenue">
+        <div class="stat-icon">💰</div>
+        <div class="label">إيرادات اليوم</div>
+        <div class="value positive">${fmt(r.revenue.total)}</div>
+        <div class="stat-meta">${r.revenue.count} طلب</div>
+      </div>
+      <div class="stat-card expense">
+        <div class="stat-icon">📤</div>
+        <div class="label">مصاريف اليوم</div>
+        <div class="value negative">${fmt(r.expenses.total)}</div>
+        <div class="stat-meta">${r.expenses.count} مصروف</div>
+      </div>
+      <div class="stat-card profit">
+        <div class="stat-icon">📊</div>
+        <div class="label">صافي اليوم</div>
+        <div class="value ${r.net >= 0 ? 'positive' : 'negative'}">${fmt(r.net)}</div>
+      </div>
+    </div>
+    <div class="card"><div class="card-header"><h3>الإيرادات حسب الخدمة</h3></div>
+      ${barChart(r.services, s => s.service_type, s => s.total)}
     </div>
     <div class="card"><div class="card-header"><h3>طلبات اليوم</h3></div>
-      <table><thead><tr><th>الفاتورة</th><th>الزبون</th><th>الخدمة</th><th>المبلغ</th><th>الدفع</th></tr></thead><tbody>
+      <div class="table-wrap"><table><thead><tr><th>الفاتورة</th><th>الزبون</th><th>الخدمة</th><th>المبلغ</th><th>الدفع</th></tr></thead><tbody>
         ${(r.orders || []).map(o => `<tr>
-          <td>${o.invoice_number}</td><td>${o.customer_name}</td>
-          <td><span class="badge badge-service">${o.service_type}</span></td>
-          <td>${fmt(o.amount)}</td><td>${paymentBadge(o.payment_method)}</td>
+          <td data-label="الفاتورة" class="cell-strong num">${o.invoice_number}</td>
+          <td data-label="الزبون">${o.customer_name}</td>
+          <td data-label="الخدمة"><span class="badge badge-service">${o.service_type}</span></td>
+          <td data-label="المبلغ" class="amount">${fmt(o.amount)}</td>
+          <td data-label="الدفع">${paymentBadge(o.payment_method)}</td>
         </tr>`).join('') || '<tr><td colspan="5">لا توجد طلبات</td></tr>'}
       </tbody></table></div>
+    </div>
     <div class="card"><div class="card-header"><h3>مصاريف اليوم</h3></div>
-      <table><thead><tr><th>العنوان</th><th>التصنيف</th><th>المبلغ</th></tr></thead><tbody>
-        ${(r.expense_list || []).map(e => `<tr><td>${e.title}</td><td>${e.category}</td><td>${fmt(e.amount)}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد مصاريف</td></tr>'}
+      <div class="table-wrap"><table><thead><tr><th>العنوان</th><th>التصنيف</th><th>المبلغ</th></tr></thead><tbody>
+        ${(r.expense_list || []).map(e => `<tr><td data-label="العنوان">${e.title}</td><td data-label="التصنيف">${e.category}</td><td data-label="المبلغ" class="amount">${fmt(e.amount)}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد مصاريف</td></tr>'}
       </tbody></table></div>
-    <div class="card"><div class="card-header"><h3>الإيرادات حسب الخدمة</h3></div>
-      <table><thead><tr><th>الخدمة</th><th>عدد</th><th>المبلغ</th></tr></thead><tbody>
-        ${(r.services || []).map(s => `<tr><td>${s.service_type}</td><td>${s.count}</td><td>${fmt(s.total)}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد</td></tr>'}
-      </tbody></table></div>
+    </div>
   `;
+}
+
+function barChart(rows, labelOf, valueOf, isExpense) {
+  const data = (rows || []).filter(r => Number(valueOf(r)) > 0);
+  if (!data.length) {
+    return '<div class="empty-state" style="padding:28px"><div class="icon">📊</div>لا توجد بيانات</div>';
+  }
+  const max = Math.max(...data.map(valueOf));
+  const fill = isExpense
+    ? 'linear-gradient(90deg, #f87171, var(--danger))'
+    : 'linear-gradient(90deg, var(--primary-light), #3b82f6)';
+  return `<div class="bar-chart">
+    ${data.map(r => {
+      const pct = Math.round((Number(valueOf(r)) / max) * 100);
+      return `<div class="bar-row">
+        <span class="bar-label" title="${labelOf(r)}">${labelOf(r)}</span>
+        <span class="bar-track"><span class="bar-fill" style="width:${pct}%;background:${fill}"></span></span>
+        <span class="bar-value">${fmt(valueOf(r))}</span>
+      </div>`;
+    }).join('')}
+  </div>`;
 }
 
 async function downloadReportPDF(type) {
@@ -898,25 +1075,38 @@ async function loadReports() {
       ${profitText}: ${fmt(Math.abs(r.profit))}
     </div>
     <div class="stats-grid">
-      <div class="stat-card revenue"><div class="label">إجمالي الإيرادات</div><div class="value positive">${fmt(r.revenue.total)}</div><div class="label">${r.revenue.count} طلب</div></div>
-      <div class="stat-card expense"><div class="label">إجمالي المصاريف</div><div class="value negative">${fmt(r.expenses.total)}</div><div class="label">${r.expenses.count} مصروف</div></div>
+      <div class="stat-card revenue">
+        <div class="stat-icon">💰</div>
+        <div class="label">إجمالي الإيرادات</div>
+        <div class="value positive">${fmt(r.revenue.total)}</div>
+        <div class="stat-meta">${r.revenue.count} طلب</div>
+      </div>
+      <div class="stat-card expense">
+        <div class="stat-icon">📤</div>
+        <div class="label">إجمالي المصاريف</div>
+        <div class="value negative">${fmt(r.expenses.total)}</div>
+        <div class="stat-meta">${r.expenses.count} مصروف</div>
+      </div>
+      <div class="stat-card profit">
+        <div class="stat-icon">📊</div>
+        <div class="label">صافي الربح</div>
+        <div class="value ${r.profit >= 0 ? 'positive' : 'negative'}">${fmt(r.profit)}</div>
+      </div>
+    </div>
+    <div class="card"><div class="card-header"><h3>الإيرادات حسب نوع الخدمة</h3></div>
+      ${barChart(r.services, s => s.service_type, s => s.total)}
+    </div>
+    <div class="card"><div class="card-header"><h3>المصاريف حسب التصنيف</h3></div>
+      ${barChart(r.expenses.by_category, e => e.category, e => e.total, true)}
+    </div>
+    <div class="card"><div class="card-header"><h3>الإيرادات اليومية خلال الشهر</h3></div>
+      ${barChart(r.daily_revenue, d => fmtDate(d.day), d => d.revenue)}
     </div>
     <div class="card"><div class="card-header"><h3>الإيرادات حسب طريقة الدفع</h3></div>
-      <table><thead><tr><th>طريقة الدفع</th><th>عدد</th><th>المبلغ</th></tr></thead><tbody>
-        ${(r.revenue.by_payment || []).map(p => `<tr><td>${PAYMENT_LABELS[p.payment_method]}</td><td>${p.count}</td><td>${fmt(p.total)}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد</td></tr>'}
+      <div class="table-wrap"><table><thead><tr><th>طريقة الدفع</th><th>عدد</th><th>المبلغ</th></tr></thead><tbody>
+        ${(r.revenue.by_payment || []).map(p => `<tr><td>${PAYMENT_LABELS[p.payment_method]}</td><td class="num">${p.count}</td><td class="amount">${fmt(p.total)}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد</td></tr>'}
       </tbody></table></div>
-    <div class="card"><div class="card-header"><h3>الإيرادات حسب نوع الخدمة</h3></div>
-      <table><thead><tr><th>الخدمة</th><th>عدد</th><th>المبلغ</th></tr></thead><tbody>
-        ${(r.services || []).map(s => `<tr><td>${s.service_type}</td><td>${s.count}</td><td>${fmt(s.total)}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد</td></tr>'}
-      </tbody></table></div>
-    <div class="card"><div class="card-header"><h3>المصاريف حسب التصنيف</h3></div>
-      <table><thead><tr><th>التصنيف</th><th>عدد</th><th>المبلغ</th></tr></thead><tbody>
-        ${(r.expenses.by_category || []).map(e => `<tr><td>${e.category}</td><td>${e.count}</td><td>${fmt(e.total)}</td></tr>`).join('') || '<tr><td colspan="3">لا توجد</td></tr>'}
-      </tbody></table></div>
-    <div class="card"><div class="card-header"><h3>الإيرادات اليومية خلال الشهر</h3></div>
-      <table><thead><tr><th>اليوم</th><th>الإيرادات</th></tr></thead><tbody>
-        ${(r.daily_revenue || []).map(d => `<tr><td>${fmtDate(d.day)}</td><td>${fmt(d.revenue)}</td></tr>`).join('') || '<tr><td colspan="2">لا توجد</td></tr>'}
-      </tbody></table></div>
+    </div>
   `;
 }
 

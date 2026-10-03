@@ -14,11 +14,11 @@ ROLES = {
 # صلاحيات كل دور
 PERMISSIONS = {
     "admin": {
-        "dashboard", "orders", "archive", "expenses", "reports",
+        "dashboard", "orders", "archive", "expenses", "reports", "pending",
         "settings", "services", "users", "backup", "network",
     },
-    "employee": {"dashboard", "orders", "archive", "reports"},
-    "accountant": {"dashboard", "expenses", "reports"},
+    "employee": {"dashboard", "orders", "archive", "reports", "pending"},
+    "accountant": {"dashboard", "expenses", "reports", "pending"},
 }
 
 
