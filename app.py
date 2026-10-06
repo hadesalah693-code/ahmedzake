@@ -1,6 +1,6 @@
 import os
 import uuid
-from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory, redirect, url_for
 from datetime import datetime, date
 from werkzeug.utils import secure_filename
 from flask_login import login_required, login_user, logout_user, current_user
@@ -12,6 +12,7 @@ from database import (
 )
 from backup import create_backup, auto_backup_if_needed, list_backups
 from network import get_local_ips, get_access_urls
+from reports_pdf import build_daily_pdf, build_monthly_pdf
 from auth import (
     init_auth, User, permission_required, role_required,
     verify_password, hash_password, ROLES,
@@ -857,6 +858,39 @@ def daily_report():
     day = request.args.get("date", date.today().isoformat())
     conn = get_db()
     return jsonify(_daily_data(conn, day))
+
+
+@app.route("/api/reports/pdf", methods=["GET"])
+@login_required
+@permission_required("reports")
+def reports_pdf():
+    rtype = request.args.get("type", "monthly")
+    conn = get_db()
+    office = get_setting(conn, "office_name", "الوسام للخدمات الجامعية")
+    currency = get_setting(conn, "currency", CURRENCY)
+    conn.close()
+
+    if rtype == "daily":
+        day = request.args.get("date", date.today().isoformat())
+        data = _daily_data(get_db(), day)
+        buf = build_daily_pdf(data, office, currency)
+        filename = f"تقرير-يومي-{day}.pdf"
+    else:
+        month = request.args.get("month", date.today().strftime("%Y-%m"))
+        conn = get_db()
+        data = _monthly_data(conn, month)
+        daily = conn.execute(
+            """SELECT DATE(created_at) as day, COALESCE(SUM(amount), 0) as revenue
+               FROM orders WHERE status='completed' AND strftime('%Y-%m', created_at)=?
+               GROUP BY DATE(created_at) ORDER BY day""",
+            (month,),
+        ).fetchall()
+        conn.close()
+        data["daily_revenue"] = [row_to_dict(r) for r in daily]
+        buf = build_monthly_pdf(data, office, currency)
+        filename = f"تقرير-شهري-{month}.pdf"
+
+    return send_file(buf, mimetype="application/pdf", as_attachment=True, download_name=filename)
 
 
 @app.route("/api/network", methods=["GET"])

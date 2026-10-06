@@ -995,65 +995,36 @@ function barChart(rows, labelOf, valueOf, isExpense) {
 
 async function downloadReportPDF(type) {
   const isDaily = type === 'daily';
-  const sourceId = isDaily ? 'dailyReportContent' : 'reportContent';
-  const btnId = isDaily ? 'downloadDailyPdf' : 'downloadMonthlyPdf';
-  const source = document.getElementById(sourceId);
-  const btn = document.getElementById(btnId);
-
-  if (!source || !source.innerHTML.trim()) {
-    alert('لا يوجد تقرير للتحميل');
-    return;
-  }
-
-  if (typeof html2pdf === 'undefined') {
-    alert('مكتبة PDF غير محمّلة. تحقق من الاتصال بالإنترنت.');
-    return;
-  }
-
   const period = isDaily
     ? document.getElementById('reportDay').value
     : document.getElementById('reportMonth').value;
-  const title = isDaily ? 'تقرير يومي' : 'تقرير شهري';
-  const office = settings.office_name || 'الوسام للخدمات الجامعية';
-
-  const wrapper = document.createElement('div');
-  wrapper.className = 'report-pdf-export';
-  wrapper.dir = 'rtl';
-  wrapper.innerHTML = `
-    <div class="report-pdf-header">
-      <h2>${office}</h2>
-      <p>${title} — ${period}</p>
-      <p>تاريخ التصدير: ${new Date().toLocaleString('ar-QA')}</p>
-    </div>
-    ${source.innerHTML}
-  `;
-
-  document.body.appendChild(wrapper);
-
+  const url = isDaily
+    ? `/api/reports/pdf?type=daily&date=${period}`
+    : `/api/reports/pdf?type=monthly&month=${period}`;
   const filename = isDaily
     ? `تقرير-يومي-${period}.pdf`
     : `تقرير-شهري-${period}.pdf`;
-
+  const btn = document.getElementById(isDaily ? 'downloadDailyPdf' : 'downloadMonthlyPdf');
   const originalText = btn ? btn.textContent : '';
   if (btn) {
     btn.disabled = true;
     btn.textContent = 'جاري التحميل...';
   }
-
   try {
-    await html2pdf().set({
-      margin: [12, 12, 12, 12],
-      filename,
-      image: { type: 'jpeg', quality: 0.96 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'legacy'] },
-    }).from(wrapper).save();
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
   } catch (err) {
     alert('تعذر إنشاء ملف PDF');
     console.error(err);
   } finally {
-    document.body.removeChild(wrapper);
     if (btn) {
       btn.disabled = false;
       btn.textContent = originalText;
@@ -1217,6 +1188,5 @@ function debounce(fn, ms) {
   loadDashboard();
 })();
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </body>
 </html>
