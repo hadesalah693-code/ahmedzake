@@ -93,7 +93,7 @@ def api_login():
 
     conn = get_db()
     row = conn.execute(
-        "SELECT * FROM users WHERE username = ? AND is_active = 1", (username,)
+        "SELECT * FROM users WHERE username = ? AND is_active = TRUE", (username,)
     ).fetchone()
     conn.close()
 
@@ -156,11 +156,12 @@ def create_user():
 
     now = datetime.now().isoformat()
     cur = conn.execute(
-        "INSERT INTO users (username, password_hash, full_name, role, is_active, created_at) VALUES (?, ?, ?, ?, 1, ?)",
+        "INSERT INTO users (username, password_hash, full_name, role, is_active, created_at) VALUES (?, ?, ?, ?, TRUE, ?) RETURNING id",
         (username, hash_password(password), full_name, role, now),
     )
+    new_id = cur.fetchone()["id"]
     conn.commit()
-    row = conn.execute("SELECT id, username, full_name, role, is_active, created_at FROM users WHERE id = ?", (cur.lastrowid,)).fetchone()
+    row = conn.execute("SELECT id, username, full_name, role, is_active, created_at FROM users WHERE id = ?", (new_id,)).fetchone()
     conn.close()
     return jsonify({**row_to_dict(row), "role_label": ROLES.get(row["role"])}), 201
 
@@ -172,7 +173,7 @@ def delete_user(user_id):
     if user_id == current_user.id:
         return jsonify({"error": "لا يمكن حذف حسابك"}), 400
     conn = get_db()
-    conn.execute("UPDATE users SET is_active = 0 WHERE id = ?", (user_id,))
+    conn.execute("UPDATE users SET is_active = FALSE WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
     return jsonify({"ok": True})
@@ -251,7 +252,7 @@ def update_settings():
 def list_services():
     conn = get_db()
     rows = conn.execute(
-        "SELECT id, name, sort_order FROM services WHERE is_active = 1 ORDER BY sort_order, id"
+        "SELECT id, name, sort_order FROM services WHERE is_active = TRUE ORDER BY sort_order, id"
     ).fetchall()
     conn.close()
     return jsonify([row_to_dict(r) for r in rows])
@@ -269,7 +270,7 @@ def add_service():
     conn = get_db()
     exists = conn.execute("SELECT id FROM services WHERE name = ?", (name,)).fetchone()
     if exists:
-        conn.execute("UPDATE services SET is_active = 1 WHERE id = ?", (exists["id"],))
+        conn.execute("UPDATE services SET is_active = TRUE WHERE id = ?", (exists["id"],))
         conn.commit()
         row = conn.execute("SELECT id, name, sort_order FROM services WHERE id = ?", (exists["id"],)).fetchone()
         conn.close()
@@ -278,11 +279,12 @@ def add_service():
     max_order = conn.execute("SELECT COALESCE(MAX(sort_order), -1) as m FROM services").fetchone()["m"]
     now = datetime.now().isoformat()
     cur = conn.execute(
-        "INSERT INTO services (name, sort_order, is_active, created_at) VALUES (?, ?, 1, ?)",
+        "INSERT INTO services (name, sort_order, is_active, created_at) VALUES (?, ?, TRUE, ?) RETURNING id",
         (name, max_order + 1, now),
     )
+    new_id = cur.fetchone()["id"]
     conn.commit()
-    row = conn.execute("SELECT id, name, sort_order FROM services WHERE id = ?", (cur.lastrowid,)).fetchone()
+    row = conn.execute("SELECT id, name, sort_order FROM services WHERE id = ?", (new_id,)).fetchone()
     conn.close()
     return jsonify(row_to_dict(row)), 201
 
@@ -292,7 +294,7 @@ def add_service():
 @permission_required("services")
 def delete_service(service_id):
     conn = get_db()
-    conn.execute("UPDATE services SET is_active = 0 WHERE id = ?", (service_id,))
+    conn.execute("UPDATE services SET is_active = FALSE WHERE id = ?", (service_id,))
     conn.commit()
     conn.close()
     return jsonify({"ok": True})
@@ -324,7 +326,7 @@ def list_orders():
         params.append(status)
 
     if month:
-        query += " AND strftime('%Y-%m', o.created_at) = ?"
+        query += " AND substr(o.created_at, 1, 7) = ?"
         params.append(month)
 
     if search:
@@ -377,7 +379,7 @@ def create_order():
     cur = conn.execute(
         """INSERT INTO orders (invoice_number, customer_name, customer_phone, service_type,
            description, amount, payment_method, status, notes, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""",
         (
             invoice,
             data["customer_name"],
@@ -392,7 +394,7 @@ def create_order():
             now,
         ),
     )
-    order_id = cur.lastrowid
+    order_id = cur.fetchone()["id"]
     save_order_items(conn, order_id, items)
     conn.commit()
     row = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
@@ -543,11 +545,12 @@ def upload_files(order_id):
 
         cur = conn.execute(
             """INSERT INTO order_files (order_id, filename, original_name, file_type, file_size, created_at)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?) RETURNING id""",
             (order_id, stored, original, ext, size, now),
         )
+        new_id = cur.fetchone()["id"]
         saved.append({
-            "id": cur.lastrowid,
+            "id": new_id,
             "filename": stored,
             "original_name": original,
             "file_type": ext,
@@ -597,7 +600,7 @@ def list_expenses():
     query = "SELECT * FROM expenses WHERE 1=1"
     params = []
     if month:
-        query += " AND strftime('%Y-%m', expense_date) = ?"
+        query += " AND substr(expense_date, 1, 7) = ?"
         params.append(month)
     query += " ORDER BY expense_date DESC"
 
@@ -616,7 +619,7 @@ def create_expense():
     conn = get_db()
     cur = conn.execute(
         """INSERT INTO expenses (title, category, amount, payment_method, notes, expense_date, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+           VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id""",
         (
             data["title"],
             data["category"],
@@ -627,8 +630,8 @@ def create_expense():
             now,
         ),
     )
+    expense_id = cur.fetchone()["id"]
     conn.commit()
-    expense_id = cur.lastrowid
     row = conn.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,)).fetchone()
     conn.close()
     return jsonify(row_to_dict(row)), 201
@@ -650,25 +653,25 @@ def delete_expense(expense_id):
 def _monthly_data(conn, month):
     revenue = conn.execute(
         """SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count, payment_method
-           FROM orders WHERE status='completed' AND strftime('%Y-%m', created_at)=?
+           FROM orders WHERE status='completed' AND substr(created_at, 1, 7)=?
            GROUP BY payment_method""",
         (month,),
     ).fetchall()
 
     total_revenue = conn.execute(
-        "SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM orders WHERE status='completed' AND strftime('%Y-%m', created_at)=?",
+        "SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM orders WHERE status='completed' AND substr(created_at, 1, 7)=?",
         (month,),
     ).fetchone()
 
     expenses = conn.execute(
         """SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count, category
-           FROM expenses WHERE strftime('%Y-%m', expense_date)=?
+           FROM expenses WHERE substr(expense_date, 1, 7)=?
            GROUP BY category""",
         (month,),
     ).fetchall()
 
     total_expenses = conn.execute(
-        "SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM expenses WHERE strftime('%Y-%m', expense_date)=?",
+        "SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM expenses WHERE substr(expense_date, 1, 7)=?",
         (month,),
     ).fetchone()
 
@@ -676,7 +679,7 @@ def _monthly_data(conn, month):
         """SELECT oi.service_type, COALESCE(SUM(oi.amount), 0) as total, COUNT(*) as count
            FROM order_items oi
            JOIN orders o ON o.id = oi.order_id
-           WHERE o.status='completed' AND strftime('%Y-%m', o.created_at)=?
+           WHERE o.status='completed' AND substr(o.created_at, 1, 7)=?
            GROUP BY oi.service_type ORDER BY total DESC""",
         (month,),
     ).fetchall()
@@ -711,9 +714,9 @@ def monthly_report():
     data = _monthly_data(conn, month)
 
     daily = conn.execute(
-        """SELECT DATE(created_at) as day, COALESCE(SUM(amount), 0) as revenue
-           FROM orders WHERE status='completed' AND strftime('%Y-%m', created_at)=?
-           GROUP BY DATE(created_at) ORDER BY day""",
+        """SELECT substr(created_at, 1, 10) as day, COALESCE(SUM(amount), 0) as revenue
+           FROM orders WHERE status='completed' AND substr(created_at, 1, 7)=?
+           GROUP BY substr(created_at, 1, 10) ORDER BY day""",
         (month,),
     ).fetchall()
     conn.close()
@@ -743,7 +746,7 @@ def yearly_report():
         """SELECT oi.service_type, COALESCE(SUM(oi.amount), 0) as total, COUNT(*) as count
            FROM order_items oi
            JOIN orders o ON o.id = oi.order_id
-           WHERE o.status='completed' AND strftime('%Y', o.created_at)=?
+           WHERE o.status='completed' AND substr(o.created_at, 1, 4)=?
            GROUP BY oi.service_type ORDER BY total DESC""",
         (year,),
     ).fetchall()
@@ -751,7 +754,7 @@ def yearly_report():
     # Aggregate payment methods for the year
     payments = conn.execute(
         """SELECT payment_method, COALESCE(SUM(amount), 0) as total, COUNT(*) as count
-           FROM orders WHERE status='completed' AND strftime('%Y', created_at)=?
+           FROM orders WHERE status='completed' AND substr(created_at, 1, 4)=?
            GROUP BY payment_method""",
         (year,),
     ).fetchall()
@@ -783,13 +786,13 @@ def today_summary():
 def _daily_data(conn, day):
     revenue = conn.execute(
         """SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count, payment_method
-           FROM orders WHERE status='completed' AND DATE(created_at)=?
+           FROM orders WHERE status='completed' AND substr(created_at, 1, 10)=?
            GROUP BY payment_method""",
         (day,),
     ).fetchall()
 
     total_revenue = conn.execute(
-        "SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM orders WHERE status='completed' AND DATE(created_at)=?",
+        "SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count FROM orders WHERE status='completed' AND substr(created_at, 1, 10)=?",
         (day,),
     ).fetchone()
 
@@ -809,13 +812,13 @@ def _daily_data(conn, day):
         """SELECT oi.service_type, COALESCE(SUM(oi.amount), 0) as total, COUNT(*) as count
            FROM order_items oi
            JOIN orders o ON o.id = oi.order_id
-           WHERE o.status='completed' AND DATE(o.created_at)=?
+           WHERE o.status='completed' AND substr(o.created_at, 1, 10)=?
            GROUP BY oi.service_type ORDER BY total DESC""",
         (day,),
     ).fetchall()
 
     orders = conn.execute(
-        "SELECT * FROM orders WHERE status='completed' AND DATE(created_at)=? ORDER BY created_at DESC",
+        "SELECT * FROM orders WHERE status='completed' AND substr(created_at, 1, 10)=? ORDER BY created_at DESC",
         (day,),
     ).fetchall()
     orders = [enrich_order(conn, r) for r in orders]
@@ -880,9 +883,9 @@ def reports_pdf():
         conn = get_db()
         data = _monthly_data(conn, month)
         daily = conn.execute(
-            """SELECT DATE(created_at) as day, COALESCE(SUM(amount), 0) as revenue
-               FROM orders WHERE status='completed' AND strftime('%Y-%m', created_at)=?
-               GROUP BY DATE(created_at) ORDER BY day""",
+            """SELECT substr(created_at, 1, 10) as day, COALESCE(SUM(amount), 0) as revenue
+               FROM orders WHERE status='completed' AND substr(created_at, 1, 7)=?
+               GROUP BY substr(created_at, 1, 10) ORDER BY day""",
             (month,),
         ).fetchall()
         conn.close()

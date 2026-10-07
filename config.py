@@ -10,4 +10,7 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 PORT = int(os.environ.get("PORT", 5000))
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 
+# لو ضُبط DATABASE_URL يُستخدم PostgreSQL وإلا SQLite محلي
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
 DATA_DIR = os.environ.get("DATA_DIR", os.path.join(BASE_DIR, "data"))

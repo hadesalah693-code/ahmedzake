@@ -7,3 +7,4 @@ waitress==3.0.0
 reportlab==5.0.1
 arabic-reshaper==3.0.1
 python-bidi==0.6.11
+psycopg[binary]==3.2.13

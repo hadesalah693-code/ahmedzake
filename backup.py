@@ -4,9 +4,47 @@ import zipfile
 from datetime import datetime, timedelta
 
 from database import DB_PATH, UPLOADS_DIR, BACKUPS_DIR, DATA_DIR, get_db
+from database import using_postgres, _PG_SCHEMA, _SQLITE_SCHEMA
 
 MAX_BACKUPS = 30
 BACKUP_INTERVAL_HOURS = 24
+
+_DUMP_TABLES = [
+    ("settings", "key, value", "key"),
+    ("services", "id, name, sort_order, is_active, created_at", "id"),
+    ("users", "id, username, password_hash, full_name, role, is_active, created_at", "id"),
+    ("orders", "id, invoice_number, customer_name, customer_phone, service_type, description, amount, payment_method, status, notes, created_at, updated_at", "id"),
+    ("order_items", "id, order_id, service_type, description, amount, sort_order", "id"),
+    ("order_files", "id, order_id, filename, original_name, file_type, file_size, created_at", "id"),
+    ("expenses", "id, title, category, amount, payment_method, notes, expense_date, created_at", "id"),
+]
+
+
+def _sql_literal(v):
+    if v is None:
+        return "NULL"
+    if isinstance(v, bool):
+        return "TRUE" if v else "FALSE"
+    if isinstance(v, (int, float)):
+        return str(v)
+    return "'" + str(v).replace("'", "''") + "'"
+
+
+def _dump_sql_database(conn):
+    lines = ["-- Al-Wisam database dump", "-- Generated: " + datetime.now().isoformat(), ""]
+    schema = "\n\n".join(_PG_SCHEMA) if using_postgres() else _SQLITE_SCHEMA
+    lines.append(schema)
+    lines.append("")
+    for table, cols, order_col in _DUMP_TABLES:
+        rows = conn.execute(f"SELECT {cols} FROM {table} ORDER BY {order_col}").fetchall()
+        if not rows:
+            continue
+        lines.append(f"-- {table}")
+        for r in rows:
+            vals = ", ".join(_sql_literal(v) for v in dict(r).values())
+            lines.append(f"INSERT INTO {table} ({cols}) VALUES ({vals});")
+        lines.append("")
+    return "\n".join(lines)
 
 
 def create_backup():
@@ -16,7 +54,11 @@ def create_backup():
     backup_path = os.path.join(BACKUPS_DIR, backup_name)
 
     with zipfile.ZipFile(backup_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        if os.path.exists(DB_PATH):
+        if using_postgres():
+            conn = get_db()
+            zf.writestr("database.sql", _dump_sql_database(conn))
+            conn.close()
+        elif os.path.exists(DB_PATH):
             zf.write(DB_PATH, "wisam.db")
 
         if os.path.isdir(UPLOADS_DIR):
